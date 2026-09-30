@@ -5,6 +5,7 @@ returns fixture outcomes, and the process-wide dependencies by in-memory ones,
 so no test touches OpenAI or the tools service.
 """
 
+import asyncio
 import json
 import re
 import tomllib
@@ -380,6 +381,22 @@ def test_crashing_analysis_shows_generic_message_without_exception_text(page):
     text = page_text(at)
     for fragment in ("boom", "secret", "settings.py", "OPENAI_API_KEY", "RuntimeError"):
         assert fragment not in text
+    assert at.status[0].state == "error"
+    assert not at.button(key="analyse").disabled
+
+
+def test_cancelled_analysis_shows_generic_message_and_reenables_analyse(page):
+    def cancelled(request: AnalysisRequest) -> AnalysisOutcome:
+        raise asyncio.CancelledError("Cancelled via cancel scope 1234")
+
+    at, fake = page(respond=cancelled)
+
+    fill_and_analyse(at)
+
+    support_id = fake.requests[0].support_id
+    [error] = at.error
+    assert failure_message(FailureCategory.INTERNAL, support_id) in error.value
+    assert "cancel scope" not in page_text(at)
     assert at.status[0].state == "error"
     assert not at.button(key="analyse").disabled
 

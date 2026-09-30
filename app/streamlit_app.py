@@ -64,6 +64,10 @@ def run_analysis(
         outcome: AnalysisOutcome
         try:
             outcome = asyncio.run(pipeline.analyse(request, on_event))
+        except asyncio.CancelledError:
+            # Nothing cancels this private event loop from outside, so a
+            # cancellation here is an internal failure the pipeline has logged.
+            outcome = _internal_failure(support_id)
         except Exception as exc:
             log_event(
                 "analysis_finished",
@@ -74,17 +78,18 @@ def run_analysis(
                 category=FailureCategory.INTERNAL.value,
                 error_type=type(exc).__name__,
             )
-            outcome = AnalysisFailure(
-                support_id,
-                FailureCategory.INTERNAL,
-                failure_message(FailureCategory.INTERNAL, support_id),
-            )
+            outcome = _internal_failure(support_id)
         failed = isinstance(outcome, AnalysisFailure)
         status.update(
             label=ui.FAILED_LABEL if failed else ui.COMPLETED_LABEL,
             state="error" if failed else "complete",
         )
     return outcome
+
+
+def _internal_failure(support_id: str) -> AnalysisFailure:
+    category = FailureCategory.INTERNAL
+    return AnalysisFailure(support_id, category, failure_message(category, support_id))
 
 
 st.set_page_config(page_title="ResumeFit AI", layout="centered")
