@@ -59,9 +59,7 @@ def text_pdf(pages: int, line: str = SAMPLE_LINE) -> bytes:
             + f"/Contents {page + 1} 0 R >>".encode()
         )
         objects[page + 1] = (
-            f"<< /Length {len(stream)} >>\nstream\n".encode()
-            + stream
-            + b"\nendstream"
+            f"<< /Length {len(stream)} >>\nstream\n".encode() + stream + b"\nendstream"
         )
     output = bytearray(b"%PDF-1.4\n")
     offsets = {}
@@ -135,7 +133,9 @@ async def test_gateway_reports_the_page_limit_error_code_for_a_six_page_pdf(
 
 async def test_gateway_renders_markdown_to_pdf_bytes(tools_url: str) -> None:
     async with ToolsGateway(tools_url) as tools:
-        pdf = await tools.render_pdf("# Report\n\n## Overall score\n\n72 / 100\n", "Report")
+        pdf = await tools.render_pdf(
+            "# Report\n\n## Overall score\n\n72 / 100\n", "Report"
+        )
 
     assert pdf is not None
     assert pdf.startswith(b"%PDF-")
@@ -173,7 +173,9 @@ async def test_timeline_counts_results_of_the_real_adapter_output(
 
     async with ToolsGateway(tools_url) as tools:
         [tool] = await tools.skill_tools()
-        value = await tool.run_json({"skills": ["JS", "k8s", "Go"]}, CancellationToken())
+        value = await tool.run_json(
+            {"skills": ["JS", "k8s", "Go"]}, CancellationToken()
+        )
         as_text = tool.return_value_as_string(value)
     event = ToolCallExecutionEvent(
         source="matcher",

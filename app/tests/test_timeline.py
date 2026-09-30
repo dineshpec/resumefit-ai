@@ -28,7 +28,9 @@ RESUME_TEXT = "Jane Example, senior engineer at Example Corp since 2019"
 def tool_request(arguments: str, source: str = "resume_parser") -> ToolCallRequestEvent:
     return ToolCallRequestEvent(
         source=source,
-        content=[FunctionCall(id="call-1", name="normalize_skills", arguments=arguments)],
+        content=[
+            FunctionCall(id="call-1", name="normalize_skills", arguments=arguments)
+        ],
     )
 
 
@@ -87,7 +89,9 @@ def test_failed_tool_call_is_reported_as_failed_without_its_error_text() -> None
 def test_unparseable_tool_arguments_still_give_a_tool_call_entry() -> None:
     entry = to_entry(tool_request("not json"))
 
-    assert entry == TimelineEntry("Resume Parser", "tool_call", "Calls normalize_skills")
+    assert entry == TimelineEntry(
+        "Resume Parser", "tool_call", "Calls normalize_skills"
+    )
 
 
 def test_orchestrator_message_becomes_a_delegation_with_display_name() -> None:

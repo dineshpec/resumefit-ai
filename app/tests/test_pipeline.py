@@ -32,7 +32,11 @@ from pipeline_fakes import (
 )
 
 from resumefit.adapters.models import create_model_client
-from resumefit.adapters.tools_gateway import ExtractResult, ToolsGateway, ToolsUnavailable
+from resumefit.adapters.tools_gateway import (
+    ExtractResult,
+    ToolsGateway,
+    ToolsUnavailable,
+)
 from resumefit.config import Settings
 from resumefit.limits import AdmissionLease, UsageLimiter
 from resumefit.observability import configure_logging
@@ -114,7 +118,9 @@ class Harness:
         self.entries.append(entry)
 
     async def run(self, analysis_request: AnalysisRequest | None = None) -> Any:
-        return await run_analysis(analysis_request or request(), self.deps(), self.record)
+        return await run_analysis(
+            analysis_request or request(), self.deps(), self.record
+        )
 
     @property
     def model_calls(self) -> int:
@@ -348,7 +354,10 @@ async def test_rejected_input_makes_no_model_call_and_keeps_quota(case: str) -> 
 @pytest.mark.parametrize(
     ("setup", "category"),
     [
-        (lambda h: setattr(h.moderator, "flagged", True), FailureCategory.CONTENT_POLICY),
+        (
+            lambda h: setattr(h.moderator, "flagged", True),
+            FailureCategory.CONTENT_POLICY,
+        ),
         (
             lambda h: setattr(h.moderator, "unavailable", True),
             FailureCategory.SERVICE_UNAVAILABLE,
@@ -500,13 +509,9 @@ async def test_invalid_then_valid_report_succeeds_and_counts_retry_tokens(
     assert retry_call["json_output"] is ReportDraft
 
 
-async def test_unparseable_report_is_retried_with_the_four_specialist_outputs() -> (
-    None
-):
+async def test_unparseable_report_is_retried_with_the_four_specialist_outputs() -> None:
     harness = Harness(
-        scripts=[
-            [*team_script(report="not json"), report_draft().model_dump_json()]
-        ]
+        scripts=[[*team_script(report="not json"), report_draft().model_dump_json()]]
     )
 
     outcome = await harness.run()
@@ -683,10 +688,12 @@ async def test_analysis_creates_no_files(
 
 
 async def test_hostile_then_valid_journey_uses_one_analysis() -> None:
-    harness = Harness()
+    harness = Harness(scripts=[team_script(), team_script()])
     deps = harness.deps()
 
-    hostile = await run_analysis(request(resume=smuggled(RESUME_TEXT)), deps, harness.record)
+    hostile = await run_analysis(
+        request(resume=smuggled(RESUME_TEXT)), deps, harness.record
+    )
     valid = await run_analysis(request(), deps, harness.record)
 
     assert isinstance(hostile, AnalysisFailure)

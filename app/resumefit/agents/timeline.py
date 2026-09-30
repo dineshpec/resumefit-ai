@@ -52,9 +52,7 @@ def to_entry(event: object) -> TimelineEntry | None:
             _display(event.source), "delegation", _delegation(event.content)
         )
     if isinstance(event, ToolCallRequestEvent):
-        summaries = [
-            _call_summary(call.name, call.arguments) for call in event.content
-        ]
+        summaries = [_call_summary(call.name, call.arguments) for call in event.content]
         return TimelineEntry(_display(event.source), "tool_call", "; ".join(summaries))
     if isinstance(event, ToolCallExecutionEvent):
         summaries = [

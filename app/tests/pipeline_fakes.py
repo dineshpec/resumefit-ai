@@ -235,11 +235,19 @@ def replay_client(
 
 
 class HangingReplayClient(ReplayChatCompletionClient):
-    """Replays the script, then never answers again (a stuck model call)."""
+    """Replays the script, then never answers again (a stuck model call).
+
+    Like the real OpenAI client, the pending call is linked to the caller's
+    cancellation token, so cancelling the token cancels the call.
+    """
 
     async def create(self, *args: Any, **kwargs: Any) -> CreateResult:
         if self._current_index >= len(self.chat_completions):
-            await asyncio.Event().wait()
+            never: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+            token = kwargs.get("cancellation_token")
+            if token is not None:
+                token.link_future(never)
+            await never
         return await super().create(*args, **kwargs)
 
 

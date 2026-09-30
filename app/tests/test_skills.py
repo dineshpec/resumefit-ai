@@ -2,7 +2,13 @@ import pytest
 
 from resumefit.agents.skills import AGENT_NAMES, SKILLS_DIR, load_skill
 
-REQUIRED_HEADINGS = ("## Role", "## Responsibilities", "## Rules", "## Output", "## Style")
+REQUIRED_HEADINGS = (
+    "## Role",
+    "## Responsibilities",
+    "## Rules",
+    "## Output",
+    "## Style",
+)
 
 
 def test_every_agent_has_a_skill_file() -> None:
