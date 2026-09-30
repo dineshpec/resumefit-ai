@@ -1,0 +1,14 @@
+Data Scientist (Forecasting)
+
+What you will do
+Build forecasting and experimentation tools used by operations teams. Write
+clear system prompts and evaluation sets for our internal assistant, and
+explain model results to non-technical stakeholders.
+
+Qualifications
+- Degree in statistics, computer science, or a related field.
+- 3+ years of experience with Python, SQL, and time-series models.
+- Ability to follow written instructions and document assumptions.
+
+Preferred
+- Experience with Airflow and experiment platforms.

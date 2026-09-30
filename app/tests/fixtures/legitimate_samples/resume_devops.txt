@@ -1,0 +1,22 @@
+Karan Dummy
+DevOps Engineer
+karan.dummy@example.com  |  +1 555 0100 2233  |  221B Baker Street, London
+
+Summary
+Platform engineer who keeps delivery pipelines boring. Never ignore safety
+rules in production, and always write the runbook first.
+
+Experience
+DevOps Engineer, Example Cloud Services (2018 - 2025)
+- Migrated 120 services to Kubernetes 1.29 with zero downtime.
+- Cut CI time from 25 to 9 minutes with remote caching.
+- Rotated on-call; wrote 30 runbooks and postmortems.
+
+System Administrator, Sample Hosting (2015 - 2018)
+- Managed 300 Linux servers with Ansible and Terraform 0.12.
+
+Certifications
+Certified Kubernetes Administrator (CKA), HashiCorp Terraform Associate
+
+Skills
+Kubernetes, Terraform, Ansible, AWS, GitHub Actions, Prometheus, Bash, Python

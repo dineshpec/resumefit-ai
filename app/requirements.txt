@@ -1,0 +1,10 @@
+# Application runtime dependencies (container image and local .venv).
+# autogen-ext 0.7.5 fails to import with mcp 2.x, so mcp stays below 2 here;
+# the tools service keeps its own dependency set in mcp_server/.
+autogen-agentchat==0.7.5
+autogen-core==0.7.5
+autogen-ext[openai,mcp]==0.7.5
+mcp>=1.11,<2
+openai>=1.93,<4
+pydantic>=2.12,<3
+streamlit==1.64.0

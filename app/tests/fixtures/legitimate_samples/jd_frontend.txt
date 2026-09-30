@@ -1,0 +1,16 @@
+Frontend Developer (React)
+
+About the team
+Our product team builds accessible tools for clinics. Score yourself honestly
+against the list below; we value growth over perfection.
+
+Responsibilities
+- Build accessible React and TypeScript interfaces.
+- Work with designers in Figma and write end-to-end tests with Playwright.
+
+Must have
+- 3+ years of React and TypeScript.
+- Strong CSS and accessibility (WCAG 2.1) knowledge.
+
+Nice to have
+- Next.js, design systems, healthcare experience.

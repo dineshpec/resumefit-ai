@@ -1,0 +1,15 @@
+Site Reliability Engineer
+
+We're looking for an SRE who enjoys automation and calm incident response.
+
+Duties
+- Operate Kubernetes clusters and CI/CD pipelines.
+- Never ignore safety rules; follow change-management procedures.
+- Participate in a follow-the-sun on-call rotation.
+
+Required skills
+- Kubernetes, Terraform, Prometheus, and Linux administration.
+- 4+ years of experience in production operations.
+
+Bonus points
+- CKA certification and Go programming.

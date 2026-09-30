@@ -1,0 +1,18 @@
+# Instruction-smuggling catalogue: one "name: regular expression" per line.
+# Patterns are matched case-insensitively against text that has been NFKC
+# normalised, stripped of zero-width characters, and had runs of spaces and
+# tabs collapsed. "." also matches newlines and "^" matches at every line start.
+# Any match rejects the input. Keep patterns narrow enough that the legitimate
+# corpus in app/tests/fixtures/legitimate_samples still passes.
+
+override_instructions: \b(ignore|disregard|forget|override)\b.{0,40}?\b(previous|prior|above|all|earlier|preceding|any|your)\b.{0,40}?\b(instructions?|prompts?|rules|directions|guidelines)\b
+new_instructions: \bnew\s+instructions?\s*:
+prompt_exfiltration: \b(reveal|print|repeat|show|display|output|leak)\b.{0,40}?\b((system|hidden|initial|original|secret|developer)\s+(prompts?|instructions)|your\s+(system\s+)?(prompts?|instructions))\b
+persona_you_are_now: \byou\s+are\s+now\b
+persona_from_now_on: \bfrom\s+now\s+on,?\s+you\b
+persona_act_as: \bact\s+as\s+(an?\s+|the\s+|my\s+)?(ai|assistant|chatbot|chatgpt|gpt|llm|language\s+model|system)\b(?!\s+(admin|administrator|architect|engineer|analyst|integrator|owner|designer))
+persona_pretend: \bpretend\s+(to\s+be|you\s+are)\b
+role_marker: ^\s*(system|assistant|developer)\s*:
+chat_template_token: <\|\s*(im_start|im_end|system|user|assistant|endoftext)\s*\|>|\[/?inst\]|<</?sys>>|^\s*#{2,}\s*(instruction|system)\b
+scoring_demand: \b(give|rate|score|grade|mark|assign|award)\b.{0,20}?\b(this|the|my)\s+(candidate|resume|applicant|cv|profile)\b.{0,40}?(\b100\b|\bperfect\b|\bmaximum\b|\bhighest\b|\bfull\s+marks\b|\btop\s+score\b)
+data_marker: <<<\s*(resume|job_description)_(start|end)\s*>>>

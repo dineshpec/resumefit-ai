@@ -1,0 +1,37 @@
+project_entry:
+  decided_at: "2026-09-30T12:31:00Z"
+  decided_by: "agent-inferred"
+  mode: "greenfield"
+  scope: "product/system"
+  baseline_sources:
+    - "User conversation (Week 5 Day 6 assignment brief and ResumeFit AI idea)"
+  existing_artifact_policy:
+    specs: "none_found"
+    designs: "none_found"
+    plans: "none_found"
+    docs: "none_found"
+    tests: "none_found"
+  stage_policy:
+    retrospective_plan_required: false
+    new_delta_plan_required: true
+    code_review_without_plan_allowed_for: "baseline_review_only"
+  assumptions:
+    - "User explicitly asked for end-to-end completion using sub-agents; stages continue without per-stage human stops, but live VPS deployment is NOT performed."
+    - "Public, anonymous web app on a single small VPS behind Caddy; optional access code."
+    - "OpenAI (gpt-4o-mini default) is the only LLM provider; key supplied via environment."
+    - "Uploaded resumes are processed in memory and never persisted."
+  risks:
+    - "Public LLM endpoint can be abused for cost; mitigated with rate limits, size caps and turn caps."
+    - "Resumes contain personal data; mitigated by PII redaction before LLM calls and no persistence."
+    - "Prompt injection via resume or job-description text."
+  next_recommended_stage: "/spec-create"
+delivery:
+  profile: "standard"
+  assurance_modules:
+    - "security"
+    - "privacy"
+    - "external-integration"
+  rationale: "Public-facing app with file upload, personal data and a paid third-party LLM, but no auth store, payments or irreversible data."
+  escalation_triggers:
+    - "Adding user accounts, persistent storage of resumes, or payments."
+    - "Allowing agents to execute code or take actions on external accounts."

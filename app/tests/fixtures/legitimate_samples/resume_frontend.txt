@@ -1,0 +1,21 @@
+Meera Placeholder - Frontend Developer
+meera.placeholder@example.net | www.meera-placeholder.example.com
+
+Professional Summary
+Frontend developer with 4 years of experience in React and TypeScript. Rated
+top performer in 2023 (score 4.8 out of 5) for accessibility work.
+
+Employment
+Frontend Developer, Example Health (2021 - 2025)
+- Rebuilt the patient portal in React 18 and TypeScript; Lighthouse score rose to 96.
+- Added keyboard navigation and ARIA labels across 40 screens.
+- Acted as the release coordinator for three quarterly launches.
+
+Junior Developer, Sample Studio (2020 - 2021)
+- Built marketing pages with Next.js and Tailwind CSS.
+
+Education
+B.Sc. Information Technology, Example College, 2020
+
+Technical Skills
+JavaScript, TypeScript, React, Next.js, CSS, Jest, Playwright, Figma

@@ -1,0 +1,18 @@
+Senior Backend Engineer - Payments Platform
+
+About the role
+We are looking for a senior backend engineer to own core payment services.
+You will act as the primary liaison between platform and risk teams.
+
+Responsibilities
+- Design, build, and operate high-throughput services in Python or Go.
+- Lead system design reviews and mentor engineers.
+- Improve reliability, observability, and on-call health.
+
+Requirements
+- 6+ years of backend experience.
+- Must have: Python, PostgreSQL, Kafka, and distributed systems knowledge.
+- Experience running services on Kubernetes in AWS.
+
+Nice to have
+- gRPC, Terraform, and payment-industry experience.

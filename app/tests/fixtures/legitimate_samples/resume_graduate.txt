@@ -1,0 +1,21 @@
+Neha Fictional
+Graduate Mechanical Engineer
+
+Objective
+Recent graduate seeking an entry-level design role in electric-vehicle
+manufacturing, with hands-on project work in CAD and thermal analysis.
+
+Education
+B.E. Mechanical Engineering, Example Engineering College, 2025 (CGPA 8.4/10)
+
+Projects
+- Battery cooling plate: designed and simulated a liquid cooling plate in
+  ANSYS Fluent; reduced peak cell temperature by 6 degrees.
+- Formula Student: member of the chassis team; acted as liaison with sponsors.
+
+Internship Experience
+Design Intern, Example Motors (May 2024 - Jul 2024)
+- Prepared GD&T drawings for 25 brackets in SolidWorks.
+
+Skills
+SolidWorks, ANSYS, MATLAB, GD&T, Python (basic)

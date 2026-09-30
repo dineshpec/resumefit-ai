@@ -1,0 +1,27 @@
+Asha Example
+Senior Backend Engineer | Bengaluru
+asha.example@example.com | +91 98765 43210 | linkedin.com/in/asha-example-000
+
+Summary
+Backend engineer with 8 years of experience building payment and ledger
+services in Python and Go. Acted as liaison between the risk and platform
+teams during a 2021-2022 migration.
+
+Experience
+Lead Engineer, Example Payments Pvt Ltd (2019 - 2024)
+- Led system design for a ledger service handling 4,000 transactions per second.
+- Reduced p99 latency by 38% by replacing synchronous calls with Kafka events.
+- Mentored 6 engineers; ran weekly architecture reviews.
+
+Software Engineer, Sample Retail (2016 - 2019)
+- Built REST APIs in Django and PostgreSQL for the order pipeline.
+- Introduced contract tests that cut integration defects by half.
+
+Education
+B.Tech in Computer Science, Example Institute of Technology, 2016
+
+Skills
+Python, Go, PostgreSQL, Kafka, Kubernetes, AWS, system design, gRPC
+
+Certifications
+AWS Certified Solutions Architect - Associate (2022)

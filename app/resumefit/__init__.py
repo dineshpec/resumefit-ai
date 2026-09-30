@@ -1,0 +1,1 @@
+"""ResumeFit AI application package."""

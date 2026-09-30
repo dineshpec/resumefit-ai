@@ -1,0 +1,27 @@
+RAVI SAMPLE
+Data Scientist
+ravi.sample@example.org | (555) 010-4477 | github.com/ravi-sample-000
+Flat 4B, 12 MG Road, Pune, PIN 411001
+
+PROFILE
+Data scientist focused on forecasting and experimentation. Designed system
+prompts and evaluation sets for an internal support assistant, and reported
+directly to the previous head of analytics.
+
+WORK HISTORY
+Data Scientist, Example Logistics (Mar 2020 - present)
+* Built demand-forecasting models (XGBoost, Prophet) that improved accuracy by 12%.
+* Owned the A/B testing platform; raised experiment throughput from 4 to 15 per month.
+* Instructed 30 analysts in SQL and statistics through an internal course.
+
+Analyst, Sample Consulting (2017 - 2020)
+* Automated monthly reporting with pandas, saving 40 hours per month.
+
+EDUCATION
+M.Sc. Statistics, Example University, 2017
+
+PROJECTS
+Route optimiser: a mixed-integer model that cut fuel costs by 7%.
+
+SKILLS
+Python, SQL, pandas, scikit-learn, XGBoost, Airflow, Tableau

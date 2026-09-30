@@ -1,0 +1,24 @@
+Priya Invented - Product Manager
+Email: priya.invented@example.com  Phone: 020-5550-1234
+
+Summary
+Product manager with 7 years of experience in B2B SaaS. Gave customers a
+voice in roadmap planning and scored 72 on NPS after the redesign.
+
+Experience
+Senior Product Manager, Example Software (2020 - 2025)
+- Owned the billing product; grew annual revenue from 3 to 7 million USD.
+- Wrote requirements for 14 releases with engineering and design.
+- Set quarterly OKRs and ran discovery interviews with 60 customers.
+
+Product Analyst, Sample Analytics (2018 - 2020)
+- Built dashboards in Looker for sales operations.
+
+Education
+MBA, Example School of Management, 2018
+
+Skills
+Roadmapping, user research, SQL, Jira, A/B testing, pricing
+
+Certifications
+Certified Scrum Product Owner (2021)

@@ -1,0 +1,7 @@
+# Fast Ruff subset only; the full gate is `python scripts/check.py`.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
