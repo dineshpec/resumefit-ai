@@ -147,7 +147,11 @@ def build_team(
         model_client=model_client,
         selector_func=select_next_speaker,
         custom_message_types=[
-            StructuredMessage[output_type] for output_type in OUTPUT_TYPES.values()
+            StructuredMessage[CandidateProfile],
+            StructuredMessage[JobRequirements],
+            StructuredMessage[MatchAssessment],
+            StructuredMessage[CoachingPlan],
+            StructuredMessage[ReportDraft],
         ],
         termination_condition=termination,
         max_turns=settings.max_agent_messages,

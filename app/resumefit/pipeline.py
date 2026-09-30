@@ -17,6 +17,7 @@ from collections.abc import Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 from autogen_agentchat.base import TaskResult
 from autogen_agentchat.messages import (
@@ -160,9 +161,8 @@ async def run_analysis(
         timeout_s = deps.settings.analysis_timeout_s + deps.hard_timeout_margin_s
         async with asyncio.timeout(timeout_s):
             success = await _analyse(request, deps, on_event, run, stack, admission)
-        outcome: AnalysisOutcome = success
-        _log(request, run, outcome, started)
-        return outcome
+        _log(request, run, success, started)
+        return success
     except _Failed as failure:
         return _failed(request, run, failure, on_event, started)
     except TimeoutError:
@@ -368,7 +368,7 @@ async def _consume_team(
     return draft, None
 
 
-async def _settle(task: "asyncio.Task[Any]") -> None:
+async def _settle(task: asyncio.Task[Any]) -> None:
     """Wait briefly for a cancelled team to shut down; force-cancel it if it does not."""
     done, _ = await asyncio.wait({task}, timeout=TEAM_SHUTDOWN_GRACE_S)
     if not done:

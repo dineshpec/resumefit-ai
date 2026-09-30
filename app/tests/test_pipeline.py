@@ -460,9 +460,7 @@ async def test_no_timeline_entry_or_log_event_contains_input_text(
     harness = Harness()
 
     await harness.run()
-    await Harness(gateway=InMemoryToolsGateway(pdf=None)).run(
-        request(resume=smuggled(RESUME_TEXT))
-    )
+    await Harness().run(request(resume=smuggled(RESUME_TEXT)))
 
     shown = json.dumps([entry.summary for entry in harness.entries])
     logged = log_stream.getvalue()
