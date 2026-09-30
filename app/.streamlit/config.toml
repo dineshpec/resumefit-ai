@@ -1,0 +1,20 @@
+# Hardened Streamlit settings. Streamlit reads this file from the directory of
+# the main script (app/), so it applies to `streamlit run app/streamlit_app.py`
+# from the repository root and to `streamlit run streamlit_app.py` in the image.
+
+[server]
+headless = true
+port = 8501
+address = "0.0.0.0"
+enableXsrfProtection = true
+enableCORS = true
+maxUploadSize = 2
+fileWatcherType = "none"
+runOnSave = false
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "none"
+toolbarMode = "minimal"
