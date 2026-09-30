@@ -94,7 +94,6 @@ st.markdown(ui.PURPOSE)
 deps = ui.load_deps()
 if deps is None:
     st.stop()
-assert deps is not None
 visitor = ui.visitor_for(st.context.headers, st.context.ip_address, deps.settings)
 gate = ui.access_gate(deps.settings.app_access_code)
 if gate.required and not st.session_state.get("unlocked"):
