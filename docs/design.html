@@ -586,7 +586,9 @@ characters with <code>?</code>. Tools log only name, duration, and result code.<
   <code>cpus: "1.0"</code> and 1 GB, mcp <code>cpus: "1.0"</code> and 512 MB). <code>app</code> sets
   <code>TRUST_PROXY_HEADERS=true</code> and <code>CLIENT_IP_HEADER=X-Real-IP</code>.
   <code>app</code> depends on <code>mcp</code> being healthy; <code>caddy</code> depends on <code>app</code>.</li>
-<li><strong>Networks.</strong> <code>edge</code> (caddy, app; normal egress so the app can reach OpenAI)
+<li><strong>Networks.</strong> <code>edge</code> (caddy, app; normal egress so the app can reach OpenAI;
+  IPv6 enabled with a ULA subnet so Docker keeps IPv6 visitors' source
+  addresses instead of rewriting them to the bridge gateway)
   and <code>private</code> (<code>internal: true</code>; app, mcp). The tools service is only on
   <code>private</code>, so it has no internet access and is not reachable from outside.</li>
 <li><strong>Images.</strong> <code>python:3.11-slim</code>, dependencies installed from the pinned
@@ -595,7 +597,8 @@ characters with <code>?</code>. Tools log only name, duration, and result code.<
   <code>.dockerignore</code> — <code>app/.dockerignore</code> and <code>mcp_server/.dockerignore</code> —
   excluding <code>.env*</code> except <code>.env.example</code>, <code>.venv*</code>, <code>tests/</code>, and caches).
   App command: <code>streamlit run streamlit_app.py</code>; tools command:
-  <code>python -m resumefit_tools.server</code>.</li>
+  <code>python -m resumefit_tools</code> (a package <code>__main__</code>, so the <code>spawn</code> extraction
+  workers do not re-import the server before their memory limit is set).</li>
 <li><strong>CI Docker job.</strong> Added to <code>.github/workflows/check.yml</code> by the deployment
   work: copies <code>.env.example</code> to <code>.env</code>, runs <code>docker compose config -q</code>, then
   <code>docker compose build app mcp</code>. This and the VPS are the only places Docker

@@ -1,6 +1,7 @@
 """FastMCP tools service: extraction, skill normalisation, PDF rendering, and health.
 
-Run with `python -m resumefit_tools.server [--host HOST] [--port PORT]`; the MCP
+Run with `python -m resumefit_tools [--host HOST] [--port PORT]` (see
+`__main__.py` for why not `-m resumefit_tools.server`); the MCP
 endpoint is `/mcp` (streamable HTTP, stateless) and `GET /health` answers
 `{"status": "ok"}`.
 """

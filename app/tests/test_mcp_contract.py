@@ -82,7 +82,7 @@ def tools_url() -> Iterator[str]:
         pytest.skip(f"tools-service interpreter not found at {python}")
     port = free_port()
     process = subprocess.Popen(
-        [str(python), "-m", "resumefit_tools.server", "--host", "127.0.0.1"]
+        [str(python), "-m", "resumefit_tools", "--host", "127.0.0.1"]
         + ["--port", str(port)],
         cwd=MCP_SERVER_DIR,
         stdout=subprocess.DEVNULL,

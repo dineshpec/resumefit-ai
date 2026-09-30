@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -232,15 +233,20 @@ def test_allowed_hosts_setting_replaces_the_internal_default() -> None:
         assert client.get("/health", headers={"host": "mcp:8000"}).status_code == 421
 
 
-@pytest.fixture
-def running_server() -> Iterator[str]:
+SPAWN_PROBE_DIR = Path(__file__).resolve().parent / "spawn_probe"
+SERVER_ONLY_MODULES = {"fastmcp", "uvicorn", "starlette", "resumefit_tools.server"}
+
+
+@contextmanager
+def tools_service_process(extra_environment: dict[str, str]) -> Iterator[str]:
+    """Start the service exactly as the image does (`python -m resumefit_tools`)."""
     port = free_port()
-    environment = {**os.environ, "PYTHONPATH": str(MCP_SERVER_DIR)}
+    environment = {**os.environ, "PYTHONPATH": str(MCP_SERVER_DIR), **extra_environment}
     process = subprocess.Popen(
         [
             sys.executable,
             "-m",
-            "resumefit_tools.server",
+            "resumefit_tools",
             "--host",
             "127.0.0.1",
             "--port",
@@ -267,6 +273,49 @@ def running_server() -> Iterator[str]:
     finally:
         process.terminate()
         process.wait(timeout=10)
+
+
+@pytest.fixture
+def running_server() -> Iterator[str]:
+    with tools_service_process({}) as base_url:
+        yield base_url
+
+
+@pytest.fixture
+def probed_server(tmp_path: Path) -> Iterator[tuple[str, Path]]:
+    """The real service, with `spawn_probe/sitecustomize.py` logging child imports."""
+    probe_environment = {
+        "PYTHONPATH": os.pathsep.join([str(SPAWN_PROBE_DIR), str(MCP_SERVER_DIR)]),
+        "RESUMEFIT_SPAWN_PROBE_DIR": str(tmp_path),
+    }
+    with tools_service_process(probe_environment) as base_url:
+        yield base_url, tmp_path
+
+
+@pytest.mark.asyncio
+async def test_extraction_worker_does_not_reimport_the_server(
+    probed_server: tuple[str, Path], files: FileFactory
+) -> None:
+    """A spawn child re-runs the parent's main module unless it is a `__main__`.
+
+    If the service started as `-m resumefit_tools.server`, every extraction child
+    would import FastMCP and uvicorn before its 256 MB address-space limit is set.
+    """
+    base_url, probe_dir = probed_server
+
+    async with Client(f"{base_url}/mcp") as client:
+        extracted = await client.call_tool(
+            "extract_resume_text",
+            {"filename": "resume.pdf", "content_base64": b64(files.pdf())},
+        )
+
+    assert extracted.structured_content is not None
+    assert extracted.structured_content["ok"] is True
+    [child_log] = probe_dir.glob("child-*.log")
+    imported = child_log.read_text(encoding="utf-8").split()
+    assert imported[0] == "started"
+    assert "resumefit_tools.extraction" in imported
+    assert SERVER_ONLY_MODULES.isdisjoint(imported), imported
 
 
 @pytest.mark.asyncio

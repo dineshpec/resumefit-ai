@@ -20,4 +20,4 @@ WORKDIR /app
 COPY resumefit_tools ./resumefit_tools
 USER mcpuser
 EXPOSE 8000
-CMD ["python", "-m", "resumefit_tools.server"]
+CMD ["python", "-m", "resumefit_tools"]

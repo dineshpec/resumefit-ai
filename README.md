@@ -75,7 +75,7 @@ PowerShell from the repository root.
 
    ```powershell
    Set-Location mcp_server
-   ..\.venv-mcp\Scripts\python -m resumefit_tools.server --host 127.0.0.1 --port 8000
+   ..\.venv-mcp\Scripts\python -m resumefit_tools --host 127.0.0.1 --port 8000
    ```
 
    Check it from another terminal: `curl.exe http://127.0.0.1:8000/health`
@@ -131,6 +131,9 @@ the first place where Docker actually runs. It performs these steps:
 - starts `app` and `mcp` with a read-only root filesystem and waits until
   both are healthy
 - checks that the tools service answers the app and cannot reach the internet
+- checks that `mcp` runs read-only with a 512 MB memory limit, then has the
+  app render a small PDF and extract it again through `/mcp`, so a real
+  extraction worker runs under its 256 MB limit on Linux
 
 ## Configuration
 
@@ -187,7 +190,8 @@ on the VPS.
 
 1. **DNS.** At your DNS provider, create an `A` record for
    `resume.dineshlabs.in` that points to the VPS address. If the VPS has IPv6,
-   also create an `AAAA` record. Wait until
+   also create an `AAAA` record, but only if Docker can route IPv6 to the
+   containers (see the IPv6 note below). Wait until
    `dig +short resume.dineshlabs.in` returns the VPS address. Caddy cannot get
    a certificate until the record resolves.
 2. **Firewall.** Allow only SSH, HTTP, and HTTPS:
@@ -222,6 +226,18 @@ on the VPS.
    - `curl -I https://resume.dineshlabs.in` returns `200` with the security
      headers.
    - Open the site in a browser and run one analysis.
+
+**IPv6 note.** The `edge` network in `docker-compose.yml` has IPv6 enabled
+(`enable_ipv6: true`, ULA subnet `fd00:dead:beef::/64`). Docker then forwards
+IPv6 visitors to Caddy with their own address, so each one gets its own
+visitor key and quota. Without it, Docker's userland proxy rewrites every IPv6
+visitor to the bridge gateway address, and all of them share one identity.
+This needs Docker Engine 27 or newer, where `ip6tables` is on by default. On an
+older engine, add `"ip6tables": true` (and `"experimental": true` before 27)
+to `/etc/docker/daemon.json` and run `sudo systemctl restart docker`. Check with
+`docker network inspect resumefit_edge --format '{{.EnableIPv6}}'` (prints
+`true`). If you cannot enable IPv6 in Docker, do not publish the `AAAA` record;
+visitors then reach the site over IPv4 only.
 
 **Operate:**
 

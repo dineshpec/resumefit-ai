@@ -510,7 +510,9 @@ Files: `docker-compose.yml`, `Caddyfile`, `app/Dockerfile`,
   `cpus: "1.0"` and 1 GB, mcp `cpus: "1.0"` and 512 MB). `app` sets
   `TRUST_PROXY_HEADERS=true` and `CLIENT_IP_HEADER=X-Real-IP`.
   `app` depends on `mcp` being healthy; `caddy` depends on `app`.
-- **Networks.** `edge` (caddy, app; normal egress so the app can reach OpenAI)
+- **Networks.** `edge` (caddy, app; normal egress so the app can reach OpenAI;
+  IPv6 enabled with a ULA subnet so Docker keeps IPv6 visitors' source
+  addresses instead of rewriting them to the bridge gateway)
   and `private` (`internal: true`; app, mcp). The tools service is only on
   `private`, so it has no internet access and is not reachable from outside.
 - **Images.** `python:3.11-slim`, dependencies installed from the pinned
@@ -519,7 +521,8 @@ Files: `docker-compose.yml`, `Caddyfile`, `app/Dockerfile`,
   `.dockerignore` — `app/.dockerignore` and `mcp_server/.dockerignore` —
   excluding `.env*` except `.env.example`, `.venv*`, `tests/`, and caches).
   App command: `streamlit run streamlit_app.py`; tools command:
-  `python -m resumefit_tools.server`.
+  `python -m resumefit_tools` (a package `__main__`, so the `spawn` extraction
+  workers do not re-import the server before their memory limit is set).
 - **CI Docker job.** Added to `.github/workflows/check.yml` by the deployment
   work: copies `.env.example` to `.env`, runs `docker compose config -q`, then
   `docker compose build app mcp`. This and the VPS are the only places Docker

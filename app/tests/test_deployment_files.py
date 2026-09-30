@@ -5,6 +5,7 @@ Compose file, Dockerfiles, Caddyfile, environment example, and README as text or
 YAML. Image builds and ``docker compose config`` run in the CI Docker job.
 """
 
+import ipaddress
 import re
 import tomllib
 from pathlib import Path
@@ -119,6 +120,17 @@ def test_app_reaches_the_edge_and_the_tools_service() -> None:
     assert sorted(service("app")["networks"]) == ["edge", "private"]
     assert sorted(service("caddy")["networks"]) == ["edge"]
     assert not (networks["edge"] or {}).get("internal", False)
+
+
+def test_edge_network_has_ipv6_so_visitors_keep_their_own_address() -> None:
+    """Without IPv6 on `edge`, docker-proxy rewrites every IPv6 visitor to one gateway."""
+    edge = compose()["networks"]["edge"]
+    assert edge["enable_ipv6"] is True
+    subnets = [ipaddress.ip_network(pool["subnet"]) for pool in edge["ipam"]["config"]]
+    ipv6 = [subnet for subnet in subnets if subnet.version == 6]
+    assert ipv6, "edge needs an IPv6 subnet"
+    assert all(subnet.subnet_of(ipaddress.IPv6Network("fc00::/7")) for subnet in ipv6)
+    assert all(subnet.prefixlen <= 64 for subnet in ipv6)
 
 
 # Compose: hardening, limits, recovery
@@ -285,7 +297,7 @@ def test_images_install_only_runtime_requirements(context: str) -> None:
     ("context", "command"),
     [
         ("app", ["streamlit", "run", "streamlit_app.py"]),
-        ("mcp_server", ["python", "-m", "resumefit_tools.server"]),
+        ("mcp_server", ["python", "-m", "resumefit_tools"]),
     ],
 )
 def test_images_start_the_planned_entry_points(
@@ -294,6 +306,13 @@ def test_images_start_the_planned_entry_points(
     stage = dict(final_stage(context))
     assert stage["WORKDIR"] == "/app"
     assert yaml.safe_load(stage["CMD"]) == command
+
+
+def test_tools_image_starts_from_the_package_main_module() -> None:
+    """`spawn` workers re-run the parent's main module unless it is a `__main__`."""
+    entry = ROOT / "mcp_server" / "resumefit_tools" / "__main__.py"
+    assert "server import main" in entry.read_text(encoding="utf-8")
+    assert "resumefit_tools.server" not in dict(final_stage("mcp_server"))["CMD"]
 
 
 # Streamlit hardening read by the app image
@@ -384,6 +403,27 @@ def test_ci_validates_compose_and_builds_both_images() -> None:
     assert "id -u" in commands
 
 
+def test_ci_extracts_a_pdf_through_mcp_in_the_limited_tools_container() -> None:
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["docker"]["steps"]
+    names = [step.get("name", "") for step in steps]
+    started = next(i for i, step in enumerate(steps) if "up -d" in step.get("run", ""))
+    extraction = [
+        i
+        for i, step in enumerate(steps)
+        if "extract_resume_text" in step.get("run", "")
+    ]
+    assert extraction, "the docker job must extract a PDF through /mcp"
+    [index] = extraction
+    command = steps[index]["run"]
+    assert index > started, names
+    assert "docker compose exec -T app" in command
+    assert "MCP_URL" in command
+    assert "render_pdf" in command
+    assert "ReadonlyRootfs" in command
+    assert "536870912" in command
+
+
 # README
 
 
@@ -418,3 +458,11 @@ def test_readme_documents_every_environment_variable() -> None:
     text = README.read_text(encoding="utf-8")
     for key in env_example():
         assert f"`{key}`" in text, f"README must document {key}"
+
+
+def test_readme_explains_the_ipv6_requirement_for_aaaa_records() -> None:
+    text = README.read_text(encoding="utf-8")
+    assert "AAAA" in text
+    assert "ip6tables" in text
+    assert "/etc/docker/daemon.json" in text
+    assert "EnableIPv6" in text

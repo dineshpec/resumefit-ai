@@ -77,6 +77,31 @@ jobs:
             echo "tools service reached the internet"; exit 1
           fi
 
+      - name: Extract a PDF through /mcp in the read-only, memory-limited tools service
+        run: |
+          test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}} {{.HostConfig.Memory}}' "$(docker compose ps -q mcp)")" = "true 536870912"
+          docker compose exec -T app python - <<'EOF'
+          import asyncio
+          import os
+
+          from resumefit.adapters.tools_gateway import ToolsGateway
+
+          PHRASE = "PostgreSQL"
+
+
+          async def main() -> None:
+              async with ToolsGateway(os.environ["MCP_URL"]) as tools:
+                  pdf = await tools.render_pdf(f"# CI resume\n\nPython, FastAPI and {PHRASE}.", "CI resume")
+                  assert pdf, "render_pdf failed"
+                  # The tool name is extract_resume_text; it runs in a spawn worker limited to 256 MB.
+                  result = await tools.extract_resume_text("resume.pdf", pdf)
+              print(f"extraction ok={result.ok} error_code={result.error_code} pages={result.pages}")
+              assert result.ok and PHRASE in result.text, result.error_code
+
+
+          asyncio.run(main())
+          EOF
+
       - name: Show service logs on failure
         if: failure()
         run: docker compose logs --no-color

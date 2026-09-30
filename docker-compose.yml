@@ -112,7 +112,14 @@ services:
     logging: *logging
 
 networks:
-  edge: {}
+  # IPv6 on edge lets Docker forward IPv6 visitors with their own source
+  # address; without it docker-proxy rewrites them all to the bridge gateway,
+  # so every IPv6 visitor would share one identity and one quota.
+  edge:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:dead:beef::/64
   private:
     internal: true
 
