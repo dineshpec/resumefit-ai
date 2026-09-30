@@ -1,0 +1,38 @@
+# Public edge for ResumeFit AI. DOMAIN and ACME_EMAIL come from .env through
+# docker-compose.yml. Caddy obtains and renews the certificate automatically and
+# redirects HTTP to HTTPS.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Uploads are capped at 2 MB by the app; anything far larger stops here.
+	request_body {
+		max_size 5MB
+	}
+
+	# Deleting a header makes Caddy apply the whole block as the response is
+	# written, so these also replace headers sent by Streamlit.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Streamlit's front end needs inline scripts and styles, so no script
+		# policy is set; framing, plugins, base-URL and form targets are locked.
+		Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	# WebSocket upgrades (Streamlit's /_stcore/stream) are proxied by default.
+	# The client-address headers are overwritten with the connecting address so
+	# visitor-supplied values never reach the app.
+	reverse_proxy app:8501 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+}

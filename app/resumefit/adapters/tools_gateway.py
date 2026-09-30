@@ -5,6 +5,7 @@ resume text and binary content never pass through a model. Agents receive only
 the ``normalize_skills`` adapter, bound to this gateway's own session.
 """
 
+import asyncio
 import base64
 import json
 from contextlib import AsyncExitStack
@@ -61,35 +62,41 @@ class ToolsGatewayProtocol(Protocol):
 
 
 class ToolsGateway:
-    """One ``McpWorkbench`` and one agent-tool session, opened and closed together."""
+    """One ``McpWorkbench`` and one agent-tool session, opened and closed together.
+
+    Both live in a dedicated owner task. The MCP client's anyio task groups cancel
+    their host task when a transport task fails (for example a refused connection);
+    hosting them in the owner task keeps that cancellation away from the caller, so
+    it surfaces as ``ToolsUnavailable`` while a cancellation of the caller itself
+    still propagates as ``CancelledError`` after the owner task has finished.
+    """
 
     def __init__(self, url: str, timeout_s: float = DEFAULT_TIMEOUT_S) -> None:
         self._params = StreamableHttpServerParams(
             url=url, timeout=timeout_s, sse_read_timeout=timeout_s
         )
-        self._stack: AsyncExitStack | None = None
+        self._owner: asyncio.Task[None] | None = None
+        self._closing = asyncio.Event()
         self._workbench: McpWorkbench | None = None
         self._session: ClientSession | None = None
 
     async def __aenter__(self) -> "ToolsGateway":
-        stack = AsyncExitStack()
+        ready: asyncio.Future[tuple[ClientSession, McpWorkbench]] = (
+            asyncio.get_running_loop().create_future()
+        )
+        self._closing = asyncio.Event()
+        owner = asyncio.create_task(self._hold_connection(ready, self._closing))
+        waiting: set[asyncio.Future[Any]] = {ready, owner}
         try:
-            # The session is opened first: its initialize call proves the service is
-            # reachable before the workbench starts its background connection.
-            self._session = await stack.enter_async_context(
-                create_mcp_server_session(self._params)
-            )
-            await self._session.initialize()
-            self._workbench = await stack.enter_async_context(
-                McpWorkbench(self._params)
-            )
-        except BaseException as error:
-            self._workbench = self._session = None
-            await _close_quietly(stack)
-            if isinstance(error, Exception):
-                raise ToolsUnavailable("tools service unavailable") from error
+            await asyncio.wait(waiting, return_when=asyncio.FIRST_COMPLETED)
+        except asyncio.CancelledError:
+            await _finish(owner, self._closing, cancel=True)
             raise
-        self._stack = stack
+        if not ready.done():
+            error = await _finish(owner, self._closing, cancel=True)
+            raise ToolsUnavailable("tools service unavailable") from error
+        self._session, self._workbench = ready.result()
+        self._owner = owner
         return self
 
     async def __aexit__(
@@ -98,10 +105,26 @@ class ToolsGateway:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        stack, self._stack = self._stack, None
+        owner, self._owner = self._owner, None
         self._workbench = self._session = None
-        if stack is not None:
-            await _close_quietly(stack)
+        if owner is not None:
+            await _finish(owner, self._closing, cancel=False)
+
+    async def _hold_connection(
+        self,
+        ready: "asyncio.Future[tuple[ClientSession, McpWorkbench]]",
+        closing: asyncio.Event,
+    ) -> None:
+        async with AsyncExitStack() as stack:
+            # The session is opened first: its initialize call proves the service is
+            # reachable before the workbench starts its background connection.
+            session = await stack.enter_async_context(
+                create_mcp_server_session(self._params)
+            )
+            await session.initialize()
+            workbench = await stack.enter_async_context(McpWorkbench(self._params))
+            ready.set_result((session, workbench))
+            await closing.wait()
 
     async def extract_resume_text(self, filename: str, data: bytes) -> ExtractResult:
         result = await self._call(
@@ -151,7 +174,10 @@ class ToolsGateway:
     async def _call(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if self._workbench is None:
             raise ToolsUnavailable("tools gateway is not open")
-        result = await self._workbench.call_tool(name, arguments)
+        try:
+            result = await self._workbench.call_tool(name, arguments)
+        except Exception as error:
+            raise ToolsUnavailable(f"{name} failed") from error
         if result.is_error:
             raise ToolsUnavailable(f"{name} failed")
         try:
@@ -163,12 +189,30 @@ class ToolsGateway:
         return payload
 
 
-async def _close_quietly(stack: AsyncExitStack) -> None:
-    """Close the MCP session and workbench; a transport error while closing is not actionable."""
-    try:
-        await stack.aclose()
-    except Exception:
-        pass
+async def _finish(
+    owner: asyncio.Task[None], closing: asyncio.Event, *, cancel: bool
+) -> BaseException | None:
+    """Stop the owner task and wait until it has closed the session and workbench.
+
+    Returns how the owner ended (a transport error while closing is not actionable).
+    If the caller is cancelled meanwhile, the owner is cancelled too and still awaited
+    before the caller's ``CancelledError`` is re-raised.
+    """
+    closing.set()
+    if cancel:
+        owner.cancel()
+    interrupted: asyncio.CancelledError | None = None
+    while not owner.done():
+        try:
+            await asyncio.wait({owner})
+        except asyncio.CancelledError as error:
+            interrupted = error
+            owner.cancel()
+    if interrupted is not None:
+        raise interrupted
+    if owner.cancelled():
+        return asyncio.CancelledError()
+    return owner.exception()
 
 
 def _optional_str(value: object) -> str | None:

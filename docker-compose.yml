@@ -1,0 +1,121 @@
+# ResumeFit AI on one VPS: Caddy (public HTTPS) -> app (Streamlit + AutoGen)
+# -> mcp (FastMCP tools). Only Caddy publishes ports; the tools service sits on
+# an internal network with no internet access. Settings come from .env (copy
+# .env.example); see README.md.
+
+name: resumefit
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    depends_on:
+      app:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build: ./app
+    image: resumefit-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Fixed for this topology: Caddy overwrites X-Real-IP on every request.
+      TRUST_PROXY_HEADERS: "true"
+      CLIENT_IP_HEADER: X-Real-IP
+      MCP_URL: http://mcp:8000/mcp
+      HOME: /tmp
+    expose:
+      - "8501"
+    networks:
+      - edge
+      - private
+    depends_on:
+      mcp:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 1.0
+    mem_limit: 1g
+    pids_limit: 512
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=4)"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+  mcp:
+    build: ./mcp_server
+    image: resumefit-mcp
+    restart: unless-stopped
+    environment:
+      MCP_ALLOWED_HOSTS: mcp:8000,localhost:8000,127.0.0.1:8000
+      HOME: /tmp
+    expose:
+      - "8000"
+    networks:
+      - private
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging: *logging
+
+networks:
+  edge: {}
+  private:
+    internal: true
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

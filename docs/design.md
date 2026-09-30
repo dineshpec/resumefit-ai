@@ -420,10 +420,15 @@ shown — in particular the user task message, which contains the resume.
 <!-- sarathi:component id="COMP-ADAPTERS" realizes="FR-UPLOAD-PAGES FR-UPLOAD-PARSETIME FR-REPORT-PDF FR-REPORT-PDFFALLBACK NFR-ARCH-MCP" uses="IFACE-MCPTOOLS IFACE-CONFIG" -->
 
 `app/resumefit/adapters/`. `ToolsGateway(url, timeout_s=30)` is an async
-context manager. `__aenter__` enters, through its own `AsyncExitStack`, one
-`McpWorkbench(StreamableHttpServerParams(url=settings.mcp_url, timeout=30))`
-and one `create_mcp_server_session(params)`; `__aexit__` closes both, also on
-cancellation.
+context manager. `__aenter__` starts a dedicated owner task that enters,
+through its own `AsyncExitStack`, one `create_mcp_server_session(params)`
+(initialized first) and one
+`McpWorkbench(StreamableHttpServerParams(url=settings.mcp_url, timeout=30))`;
+`__aexit__` tells the owner task to close both and waits for it, also on
+cancellation. The owner task isolates the MCP client's anyio task groups, which
+cancel their host task when a transport task fails: an unreachable service
+therefore raises `ToolsUnavailable` in the caller, while a cancellation of the
+caller still propagates as `CancelledError` once the owner task has finished.
 
 - `extract_resume_text(filename, data)` calls the tool on the workbench with
   base64 content and returns `ExtractResult` (the 30-second timeout exceeds

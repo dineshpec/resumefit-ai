@@ -209,6 +209,28 @@ async def test_gateway_closes_its_workbench_and_session_on_exit(
         await gateway.skill_tools()
 
 
+async def test_cancelling_the_caller_inside_the_gateway_propagates_after_cleanup(
+    tools_url: str,
+) -> None:
+    before = asyncio.all_tasks()
+    opened = asyncio.Event()
+
+    async def use_gateway() -> None:
+        async with ToolsGateway(tools_url) as tools:
+            await tools.render_pdf("# Report\n", "Report")
+            opened.set()
+            await asyncio.sleep(60)
+
+    task = asyncio.create_task(use_gateway())
+    await asyncio.wait_for(opened.wait(), timeout=10)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    await asyncio.sleep(0.1)
+    assert asyncio.all_tasks() - before - {asyncio.current_task()} == set()
+
+
 async def test_unreachable_tools_service_raises_tools_unavailable() -> None:
     url = f"http://127.0.0.1:{free_port()}/mcp"
 

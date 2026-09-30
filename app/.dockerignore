@@ -1,0 +1,26 @@
+# Build context for the application image. The Dockerfile copies only the
+# runtime files it names; this list keeps secrets, environments, tests, and
+# caches out of the context entirely.
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv*
+
+# Tests and development-only files
+tests
+requirements-dev.txt
+
+# Caches and bytecode
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Build files
+Dockerfile
+.dockerignore
