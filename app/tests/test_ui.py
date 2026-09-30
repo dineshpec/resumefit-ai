@@ -75,9 +75,9 @@ def make_deps(access_code: str = "", limiter: UsageLimiter | None = None):
         settings=settings,
         limiter=limiter
         or UsageLimiter(per_visitor_daily=5, global_daily=200, max_concurrent=3),
-        tools_factory=unused,  # type: ignore[arg-type]
+        tools_factory=unused,
         moderator=FakeModerator(),
-        model_client_factory=unused,  # type: ignore[arg-type]
+        model_client_factory=unused,
         clock=lambda: FIXED_NOW,
     )
 
@@ -239,8 +239,8 @@ def test_quota_counter_shows_analyses_left_today(page):
     visitor = visitor_key("local", SECRET)
     for _ in range(2):
         lease = limiter.try_admit(visitor, FIXED_NOW)
-        lease.start(FIXED_NOW)  # type: ignore[union-attr]
-        lease.release()  # type: ignore[union-attr]
+        lease.start(FIXED_NOW)
+        lease.release()
 
     at, _ = page(make_deps(limiter=limiter))
 
