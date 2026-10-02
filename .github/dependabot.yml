@@ -1,0 +1,37 @@
+# Weekly update pull requests; each one must pass the check workflow before merging.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /app
+    schedule:
+      interval: weekly
+    ignore:
+      # autogen-ext 0.7.5 fails to import with mcp 2.x (see README, Architecture).
+      - dependency-name: mcp
+        versions: [">=2"]
+    groups:
+      app-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /mcp_server
+    schedule:
+      interval: weekly
+    groups:
+      tools-python:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /app
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /mcp_server
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

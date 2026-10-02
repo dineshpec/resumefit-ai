@@ -466,3 +466,66 @@ def test_readme_explains_the_ipv6_requirement_for_aaaa_records() -> None:
     assert "ip6tables" in text
     assert "/etc/docker/daemon.json" in text
     assert "EnableIPv6" in text
+
+
+# Maintenance: CI triggers, dependency updates, fonts, and container healing
+
+DEPENDABOT = ROOT / ".github" / "dependabot.yml"
+RESTART_SCRIPT = ROOT / "scripts" / "restart-unhealthy.sh"
+
+
+def test_ci_runs_on_pushes_to_the_default_branch() -> None:
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+    triggers = workflow.get("on", workflow.get(True))  # YAML 1.1 reads `on` as True
+    assert triggers["push"]["branches"] == ["main"]
+    assert "pull_request" in triggers
+
+
+def test_ci_audits_both_runtime_dependency_sets() -> None:
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+    commands = "\n".join(
+        step.get("run", "") for step in workflow["jobs"]["gate"]["steps"]
+    )
+    assert "pip-audit -r app/requirements.txt" in commands
+    assert "pip-audit -r mcp_server/requirements.txt" in commands
+
+
+def test_dependabot_covers_every_ecosystem_and_keeps_mcp_below_2_for_the_app() -> None:
+    config = yaml.safe_load(DEPENDABOT.read_text(encoding="utf-8"))
+    covered = {
+        (update["package-ecosystem"], update["directory"])
+        for update in config["updates"]
+    }
+    assert covered == {
+        ("pip", "/app"),
+        ("pip", "/mcp_server"),
+        ("docker", "/app"),
+        ("docker", "/mcp_server"),
+        ("github-actions", "/"),
+    }
+    [app_pip] = [
+        update
+        for update in config["updates"]
+        if update["package-ecosystem"] == "pip" and update["directory"] == "/app"
+    ]
+    assert {"dependency-name": "mcp", "versions": [">=2"]} in app_pip["ignore"]
+
+
+def test_tools_image_installs_the_unicode_pdf_font() -> None:
+    runs = " ".join(
+        arguments
+        for keyword, arguments in final_stage("mcp_server")
+        if keyword == "RUN"
+    )
+    assert "fonts-dejavu-core" in runs
+    assert "--no-install-recommends" in runs
+    assert "rm -rf /var/lib/apt/lists" in runs
+
+
+def test_restart_script_restarts_only_unhealthy_resumefit_containers() -> None:
+    script = RESTART_SCRIPT.read_text(encoding="utf-8")
+    project = compose()["name"]
+    assert f"label=com.docker.compose.project={project}" in script
+    assert "health=unhealthy" in script
+    assert "docker restart" in script
+    assert "docker.sock" not in script
