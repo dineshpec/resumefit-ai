@@ -289,6 +289,7 @@ def fake_skill_tool() -> FunctionTool:
         fake_normalize_skills,
         name="normalize_skills",
         description="Map skill names to canonical names.",
+        strict=True,
     )
 
 

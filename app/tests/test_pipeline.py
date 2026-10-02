@@ -785,3 +785,40 @@ async def test_coverage_is_still_checked_when_normalize_skills_fails() -> None:
 
     assert isinstance(outcome, AnalysisSuccess)
     assert outcome.report.overall_score == 27 + 20 + 8 + 12 + 4
+
+
+class FailsAfterFirstCallClient(ReplayChatCompletionClient):
+    """The orchestrator's call works; the next one fails as OpenAI's client would."""
+
+    async def create(self, *args: Any, **kwargs: Any) -> CreateResult:
+        if self._current_index >= 1:
+            raise ValueError("`normalize_skills` is not strict")
+        return await super().create(*args, **kwargs)
+
+
+async def test_a_failing_model_call_logs_its_error_type_but_not_its_text(
+    log_stream: io.StringIO,
+) -> None:
+    harness = Harness(client_type=FailsAfterFirstCallClient)
+
+    outcome = await harness.run()
+
+    assert isinstance(outcome, AnalysisFailure)
+    assert outcome.failure is FailureCategory.SERVICE_UNAVAILABLE
+    [event] = finished_events(log_stream)
+    assert (event["stage"], event["error_type"]) == ("report", "ValueError")
+    assert "not strict" not in log_stream.getvalue()
+
+
+async def test_an_unreachable_tools_service_logs_tools_unavailable(
+    log_stream: io.StringIO,
+) -> None:
+    harness = Harness(
+        gateway=InMemoryToolsGateway(extract_error=ToolsUnavailable("down"))
+    )
+
+    outcome = await harness.run()
+
+    assert isinstance(outcome, AnalysisFailure)
+    [event] = finished_events(log_stream)
+    assert event["error_type"] == "ToolsUnavailable"

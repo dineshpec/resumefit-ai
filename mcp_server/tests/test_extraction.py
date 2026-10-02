@@ -68,9 +68,10 @@ def test_long_text_is_truncated_at_the_character_cap() -> None:
     assert result["truncated"] is True
 
 
-def test_file_of_exactly_two_megabytes_is_accepted_and_one_byte_more_is_too_large() -> (
+def test_file_of_exactly_seven_megabytes_is_accepted_and_one_byte_more_is_too_large() -> (
     None
 ):
+    assert MAX_FILE_BYTES == 7 * 1024 * 1024
     assert extract_text("resume.txt", b"a" * MAX_FILE_BYTES)["ok"] is True
     assert extract_text("resume.txt", b"a" * (MAX_FILE_BYTES + 1)) == {
         "ok": False,
@@ -160,3 +161,11 @@ def test_hostile_or_mislabelled_file_is_rejected_quickly_with_its_error_code(
 
     assert result == {"ok": False, "error_code": expected_code}
     assert time.monotonic() - started < 5
+
+
+def test_pdf_with_bytes_before_its_header_is_extracted(files: FileFactory) -> None:
+    result = extract_text("resume.pdf", b"\xef\xbb\xbf\r\n" + files.pdf())
+
+    assert result["ok"] is True
+    assert result["file_type"] == "pdf"
+    assert SAMPLE_LINE[:30] in result["text"]

@@ -24,7 +24,10 @@ if str(MCP_SERVER_DIR) not in sys.path:
 SAMPLE_LINE = (
     "Senior Python developer with FastAPI, PostgreSQL and Kubernetes experience."
 )
-TWENTY_ONE_MB = 21 * 1024 * 1024
+
+from resumefit_tools.extraction import MAX_DOCX_UNCOMPRESSED_BYTES  # noqa: E402
+
+BEYOND_DOCX_EXPANSION_LIMIT = MAX_DOCX_UNCOMPRESSED_BYTES + 1024 * 1024
 
 
 class FileFactory:
@@ -77,7 +80,7 @@ class FileFactory:
 
     def docx_expanding_beyond_limit(self) -> bytes:
         return self.docx_with_extra_entries(
-            {"word/media/padding.bin": bytes(TWENTY_ONE_MB)}
+            {"word/media/padding.bin": bytes(BEYOND_DOCX_EXPANSION_LIMIT)}
         )
 
     def docx_with_entry_count(self, total_entries: int) -> bytes:

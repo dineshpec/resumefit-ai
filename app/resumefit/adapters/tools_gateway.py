@@ -3,7 +3,8 @@
 The pipeline calls ``extract_resume_text`` and ``render_pdf`` itself, so raw
 resume text and binary content never pass through a model, and it calls
 ``normalize_skills`` to check the coverage score. Agents receive only the
-``normalize_skills`` adapter, bound to this gateway's own session.
+``normalize_skills`` adapter, bound to this gateway's own session, marked
+``strict`` so it can sit next to a structured output type.
 """
 
 import asyncio
@@ -14,6 +15,7 @@ from dataclasses import dataclass, field
 from types import TracebackType
 from typing import Any, Protocol
 
+from autogen_core import CancellationToken
 from autogen_core.tools import BaseTool
 from autogen_ext.tools.mcp import (
     McpWorkbench,
@@ -30,6 +32,34 @@ NORMALIZE_BATCH = 100  # the tool's own per-call limit
 
 class ToolsUnavailable(Exception):
     """The tools service could not be reached or answered with a protocol error."""
+
+
+class StrictTool(BaseTool[Any, Any]):
+    """An agent tool advertised with ``strict: true``; calls go to the wrapped tool.
+
+    Agents that have both tools and an output type get their structured output
+    through OpenAI's ``parse``, which refuses any tool that is not strict. MCP
+    adapters are never marked strict, so they are wrapped here. Construction
+    fails if the tool's arguments break strict mode's rules (all required, no
+    additional properties).
+    """
+
+    def __init__(self, tool: BaseTool[Any, Any]) -> None:
+        super().__init__(
+            tool.args_type(),
+            tool.return_type(),
+            tool.name,
+            tool.description,
+            strict=True,
+        )
+        self._tool = tool
+        _ = self.schema  # validate strict-mode rules now, not at the first model call
+
+    async def run(self, args: Any, cancellation_token: CancellationToken) -> Any:
+        return await self._tool.run(args, cancellation_token)
+
+    def return_value_as_string(self, value: Any) -> str:
+        return self._tool.return_value_as_string(value)
 
 
 @dataclass(frozen=True)
@@ -191,7 +221,7 @@ class ToolsGateway:
             tools = await mcp_server_tools(self._params, session=self._session)
         except Exception as error:
             raise ToolsUnavailable("tools service unavailable") from error
-        return [tool for tool in tools if tool.name in AGENT_TOOL_NAMES]
+        return [StrictTool(tool) for tool in tools if tool.name in AGENT_TOOL_NAMES]
 
     async def _call(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         payload = await self._call_json(name, arguments)

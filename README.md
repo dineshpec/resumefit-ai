@@ -30,7 +30,7 @@ Guardrails and cost limits run before any paid model call. For details, see
  +---------------------------------------------------------------------+
  | caddy  (caddy:2-alpine)                                             |
  |   automatic HTTPS for DOMAIN, redirects HTTP to HTTPS               |
- |   adds security headers, limits request bodies to 5 MB              |
+ |   adds security headers, limits request bodies to 10 MB             |
  |   sets X-Real-IP and X-Forwarded-For to the connecting address      |
  +---------------------------------------------------------------------+
                                    |  HTTP + WebSocket, "edge" network
@@ -189,8 +189,8 @@ Resource limits in Compose:
 
 Fixed input limits:
 
-- Resume: PDF, DOCX, or UTF-8 text, at most 2 MB and 5 pages
-- DOCX: at most 500 entries and 20 MB uncompressed
+- Resume: PDF, DOCX, or UTF-8 text, at most 7 MB and 5 pages
+- DOCX: at most 500 entries and 50 MB uncompressed
 - Resume text: 300 to 20,000 characters
 - Job description: 200 to 10,000 characters
 
@@ -318,7 +318,7 @@ the result of each item.
   `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive
   `Permissions-Policy`, and a CSP with `frame-ancestors 'none'`,
   `object-src 'none'`, `base-uri 'self'`, and `form-action 'self'`. It
-  removes the `Server` header and rejects request bodies larger than 5 MB.
+  removes the `Server` header and rejects request bodies larger than 10 MB.
   Caddy also overwrites `X-Real-IP` and `X-Forwarded-For` with the connecting
   address. The app trusts only `X-Real-IP`, so visitors cannot fake another
   identity to get around their quota.

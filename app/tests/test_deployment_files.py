@@ -379,7 +379,7 @@ def test_caddyfile_overwrites_client_ip_headers() -> None:
 
 def test_caddyfile_limits_request_bodies_and_compresses() -> None:
     text = caddyfile()
-    assert re.search(r"request_body\s*\{\s*max_size\s+5MB\s*\}", text)
+    assert re.search(r"request_body\s*\{\s*max_size\s+10MB\s*\}", text)
     assert re.search(r"encode\s+zstd\s+gzip", text)
 
 

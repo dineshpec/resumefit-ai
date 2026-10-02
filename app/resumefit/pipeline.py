@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import threading
 import time
 from collections.abc import Awaitable, Callable
@@ -89,6 +90,7 @@ UNPARSEABLE_REPORT = (
 
 OnEvent = Callable[[TimelineEntry], None]
 EvidenceFor = Callable[[ReportDraft], Awaitable[SkillEvidence]]
+_WRAPPED_ERROR_TYPE = re.compile(r"([A-Za-z_][A-Za-z0-9_]{0,79}): ")
 
 
 def _utc_now() -> datetime:
@@ -138,6 +140,19 @@ class _Run:
         return TokenUsage(total.prompt_tokens, total.completion_tokens)
 
 
+def _error_type(error: BaseException) -> str:
+    """The error's class name; for a team error, the agent's original error class.
+
+    AutoGen re-raises an agent's exception as ``RuntimeError("<Type>: <message>...")``;
+    only the leading class name is taken, never the message.
+    """
+    if type(error) is RuntimeError:
+        wrapped = _WRAPPED_ERROR_TYPE.match(str(error))
+        if wrapped is not None:
+            return wrapped.group(1)
+    return type(error).__name__
+
+
 def retry_fits(spent_tokens: int, prompt_chars: int, settings: Settings) -> bool:
     """Whether the report retry's estimated cost still fits the per-analysis budget."""
     estimate = (
@@ -166,6 +181,10 @@ async def run_analysis(
         _log(request, run, success, started)
         return success
     except _Failed as failure:
+        # The type of the underlying error (never its text) says which dependency
+        # failed, e.g. AuthenticationError, RateLimitError, or ToolsUnavailable.
+        if run.error_type is None and failure.__cause__ is not None:
+            run.error_type = _error_type(failure.__cause__)
         return _failed(request, run, failure, on_event, started)
     except TimeoutError:
         return _failed(
@@ -424,7 +443,7 @@ async def _report(
     elif team_error is not None and run.last_delegation == REPORT_WRITER:
         reasons = [UNPARSEABLE_REPORT]
     else:
-        raise _Failed(FailureCategory.SERVICE_UNAVAILABLE)
+        raise _Failed(FailureCategory.SERVICE_UNAVAILABLE) from team_error
 
     if any(name not in run.outputs for name in AGENT_ORDER[:-1]):
         raise _Failed(FailureCategory.REPORT_INVALID)

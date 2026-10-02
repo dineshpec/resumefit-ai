@@ -59,17 +59,37 @@ def test_bad_upload_is_rejected_with_specific_problem(filename, data, problem):
     assert check.problem is problem
 
 
-def test_file_of_exactly_two_mebibytes_is_accepted():
+def test_file_of_exactly_seven_mebibytes_is_accepted():
     data = PDF + b"0" * (MAX_UPLOAD_BYTES - len(PDF))
 
-    assert MAX_UPLOAD_BYTES == 2_097_152
+    assert MAX_UPLOAD_BYTES == 7 * 1024 * 1024
     assert validate_upload("resume.pdf", data).ok
 
 
-def test_file_one_byte_over_two_mebibytes_is_rejected_as_too_large():
+def test_file_one_byte_over_seven_mebibytes_is_rejected_as_too_large():
     data = PDF + b"0" * (MAX_UPLOAD_BYTES + 1 - len(PDF))
 
     check = validate_upload("resume.pdf", data)
 
     assert not check.ok
     assert check.problem is UploadProblem.TOO_LARGE
+
+
+def test_pdf_header_after_a_few_leading_bytes_is_accepted():
+    # Some exporters write bytes before the header; PDF readers accept that.
+    check = validate_upload("resume.pdf", b"\xef\xbb\xbf\r\n" + PDF)
+
+    assert check.ok
+    assert check.file_type == "pdf"
+
+
+def test_pdf_header_beyond_the_first_kilobyte_is_rejected_as_mismatch():
+    check = validate_upload("resume.pdf", b" " * 1024 + PDF)
+
+    assert check.problem is UploadProblem.MISMATCH
+
+
+def test_text_file_containing_an_early_pdf_header_is_rejected_as_mismatch():
+    check = validate_upload("resume.txt", b"junk " + PDF)
+
+    assert check.problem is UploadProblem.MISMATCH

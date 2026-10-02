@@ -514,7 +514,7 @@ def test_streamlit_config_hardens_browser_settings():
 
     assert config["server"]["enableXsrfProtection"] is True
     assert config["server"]["enableCORS"] is True
-    assert config["server"]["maxUploadSize"] == 2
+    assert config["server"]["maxUploadSize"] == 7
     assert config["server"]["headless"] is True
     assert config["server"]["port"] == 8501
     assert config["browser"]["gatherUsageStats"] is False
