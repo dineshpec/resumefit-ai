@@ -113,10 +113,18 @@ individual suites:
 .\.venv\Scripts\python -m pytest app\tests\test_deployment_files.py app\tests\test_dockerignore.py -q
 ```
 
-The optional live check calls OpenAI and costs about US$0.50. Run it yourself
-before a release:
-`$env:OPENAI_API_KEY = "sk-..."; .\.venv\Scripts\python -m pytest app\tests -m live -q`.
-To also run the 10 timed live runs, set `RESUMEFIT_LIVE_RUNS=10`.
+The optional live check calls OpenAI. Run it yourself before a release:
+`$env:OPENAI_API_KEY = "sk-..."; .\.venv\Scripts\python -m pytest app\tests -m live -q -s`.
+Set `RESUMEFIT_LIVE_RUNS=10` to also run the full set (about US$1 with
+`gpt-4o-mini`). The full set contains these runs:
+
+- 10 timed runs.
+- The red-team set.
+- The scoring evaluation, which runs before you change prompts or the model:
+  - Each sample resume must score at least 15 points higher against its own
+    role's job description than against another role's.
+  - Three repeated runs of the same inputs must stay within 10 points of each
+    other.
 
 Docker is not installed on the development PC. The deployment files are
 checked locally only by static tests (`test_deployment_files.py`,
@@ -167,6 +175,10 @@ block of the `mcp` service in `docker-compose.yml`:
 - `MCP_ALLOWED_HOSTS`: set to `mcp:8000,localhost:8000,127.0.0.1:8000`.
 - `EXTRACTION_TIMEOUT_SECONDS`: default `10`.
 - `MAX_CONCURRENT_EXTRACTIONS`: default `2`.
+- `PDF_FONT_REGULAR` and `PDF_FONT_BOLD`: the TrueType fonts for PDF export.
+  The defaults are the DejaVu Sans files that the image installs. If either
+  file is missing, PDF export uses Latin-1 core fonts, as it does on a
+  development PC without DejaVu.
 
 Resource limits in Compose:
 
@@ -246,6 +258,18 @@ visitors then reach the site over IPv4 only.
 - Stop: `docker compose down`. This keeps the `caddy_data` certificate volume.
 - Update: `git pull && docker compose up -d --build`.
 - Clean up old images: `docker image prune -f`.
+- Heal unhealthy containers: Docker restarts a container only when it exits.
+  To also restart one whose health check fails, add this line with
+  `crontab -e`:
+  `* * * * * /home/<you>/resumefit-ai/scripts/restart-unhealthy.sh >> /tmp/resumefit-heal.log 2>&1`.
+- Monitor from outside: point a free uptime checker (for example UptimeRobot)
+  at `https://resume.dineshlabs.in` so that you hear about outages the VPS
+  cannot report itself.
+- Cap spending: set a monthly budget limit on the OpenAI project that owns
+  the key. The in-memory quotas reset on restart; the budget limit does not.
+- Dependency updates: Dependabot opens weekly pull requests for the Python
+  requirements, both base images, and the GitHub Actions. CI also runs
+  `pip-audit` on both requirements files.
 - Roll back: `git checkout <previous-commit> && docker compose up -d --build`.
   There is no data to migrate.
 - Backups: not needed. The service stores no data. The only volume holds
@@ -327,6 +351,9 @@ the result of each item.
   Only after all of these steps does the request use up quota and start the
   agent team. The agents see only redacted text inside data markers. The app
   calculates the score itself and removes active content from every string.
+  A skill counts toward the coverage score only if the redacted resume text
+  names it, either directly or through a synonym from the skills taxonomy.
+  The Matcher's claim alone is not enough.
 - **Browser:** Streamlit's XSRF and CORS protection are on. Error details are
   hidden, and usage statistics are turned off. There is no analytics or
   tracking.
@@ -369,17 +396,24 @@ The JSON download follows schema version `1.0` (`MatchReport` in
 - **Names are not redacted.** Names and employers are sent to OpenAI. The
   page's notice says so.
 - **Content support is limited.** The checks are tuned for English. PDF export
-  supports only Latin-1 characters, and other characters appear as `?`. DOCX
-  files have no page limit; only the text-length limit applies.
+  uses DejaVu Sans. It covers Latin, Greek, and Cyrillic, but not scripts such
+  as Devanagari or CJK. Characters in those scripts are left out of the PDF;
+  the on-screen report and the downloads keep them. DOCX files have no page
+  limit; only the text-length limit applies.
 - **Prompt injection is not fully prevented.** New phrasings can get past the
-  pattern checks. They can affect only the parts of the score that the model
-  judges, not the skill-coverage score.
+  pattern checks. They can still affect the 45 points that the model judges
+  directly. They cannot add skill-coverage points for a skill that the resume
+  text does not name. A skill that the model wrongly reports as missing still
+  lowers the score.
+- **Skill matching is literal.** A required skill counts only if the resume
+  names it or a taxonomy synonym. A skill that is only implied, such as
+  "relational databases" for PostgreSQL, is not counted.
 - **There is no script Content Security Policy.** Streamlit needs inline
   resources, so the policy sets only `frame-ancestors`, `object-src`,
   `base-uri`, and `form-action`.
-- **Docker restarts only crashed containers.** It does not restart a container
-  that becomes unhealthy but keeps running. `docker compose ps` shows the
-  health status.
+- **Docker restarts only crashed containers.** A container that becomes
+  unhealthy but keeps running is restarted only by the optional cron job
+  `scripts/restart-unhealthy.sh` (see **Operate**), at most a minute later.
 - **The deployment has not been tested on a real server yet.** The images,
   Compose file, Caddy, and read-only Streamlit have been checked only by
   static tests and the CI `docker` job. The TLS certificate, WebSocket

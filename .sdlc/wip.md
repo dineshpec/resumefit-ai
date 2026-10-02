@@ -3,14 +3,14 @@
 ## Product Snapshot
 
 Goal: ResumeFit AI — a public Streamlit app on one VPS where an AutoGen agent team (orchestrator + 5 specialists, skill files, FastMCP tools) turns a resume and a job description into a scored, explainable, downloadable match report, behind guardrails and cost limits.
-Working Today: foundation modules, the tools service, the agent team plus analysis pipeline (offline replay and real-MCP tested), and the Streamlit page (AppTest suite plus a local manual run); no deployment yet.
+Working Today: all five PRs are on `main`: foundation modules, the tools service, the agent team plus analysis pipeline, the Streamlit page, and the deployment stack (Docker, Caddy, CI). The deployment has been checked only by static tests and the CI docker job; it has not run on a real server.
 Reusable Today: local virtual environments `.venv` (application deps: autogen 0.7.5, `mcp` 1.30, streamlit 1.64) and `.venv-mcp` (fastmcp 4.0.10, pypdf, python-docx, fpdf2); both untracked.
 Current Increment: spec, design, and plan independently assessed (Pass-with-fixes for all three); all 12 review fixes applied and all three checkers pass again.
 Remaining Shared Work: none beyond the plan's five PRs.
 Target-Owned Work: all five PRs in docs/plan.md, in four waves: Wave 1 foundation + tools service (parallel), Wave 2 agent team and pipeline, Wave 3 Streamlit page, Wave 4 deployment stack.
 Deferred: shared-storage limiter, model-based injection classifier, script Content Security Policy.
 Before Coding: nothing blocking; default limits are owner-accepted (5/day per client, 1 concurrent per client, 3 concurrent global, 200/day global, 150k tokens, 180 s, 20 messages; all env-configurable).
-Next Action: owner UI review of the running page and human review of PR-UI-STREAMLIT, then /code-assess; afterwards Wave 4 /code-create PR-DEPLOY-STACK (docs/plan.md). Feedback for PR-AGENTS-TEAM (unreachable tools service surfaced as `CancelledError`): fixed 2026-10-01, see the UI entry under Check And Review Evidence.
+Next Action: first VPS deployment and the README post-deploy smoke checklist; run the full live set (`RESUMEFIT_LIVE_RUNS=10`) to check the 2026-10-02 scoring changes (resume-evidence check on skill coverage, temperature 0 with a fixed seed).
 
 ## Process Snapshot
 
