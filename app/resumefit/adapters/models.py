@@ -7,7 +7,10 @@ from openai import AsyncOpenAI
 from resumefit.config import Settings
 from resumefit.guardrails.moderation import ModerationVerdict, OpenAIModerator
 
-TEMPERATURE = 0.2
+# Temperature 0 and a fixed seed keep repeated analyses of the same inputs close;
+# OpenAI treats seeded sampling as best effort, not a guarantee.
+TEMPERATURE = 0.0
+SEED = 42
 REQUEST_TIMEOUT_S = 60.0
 MAX_RETRIES = 2
 MODERATION_TIMEOUT_S = 10.0
@@ -19,6 +22,7 @@ def create_model_client(settings: Settings) -> ChatCompletionClient:
         model=settings.openai_model,
         api_key=settings.openai_api_key,
         temperature=TEMPERATURE,
+        seed=SEED,
         timeout=REQUEST_TIMEOUT_S,
         max_retries=MAX_RETRIES,
         max_tokens=settings.max_output_tokens_per_call,

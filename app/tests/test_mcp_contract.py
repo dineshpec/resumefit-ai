@@ -237,3 +237,18 @@ async def test_unreachable_tools_service_raises_tools_unavailable() -> None:
     with pytest.raises(ToolsUnavailable):
         async with ToolsGateway(url, timeout_s=2) as tools:
             await tools.extract_resume_text("resume.txt", b"text")
+
+
+async def test_gateway_maps_skills_to_canonical_names_in_batches(
+    tools_url: str,
+) -> None:
+    skills = ["JS", "k8s", "Postgres", *(f"made-up skill {n}" for n in range(120))]
+
+    async with ToolsGateway(tools_url) as tools:
+        canonical = await tools.normalize_skills(skills)
+
+    assert canonical["JS"] == "JavaScript"
+    assert canonical["k8s"] == "Kubernetes"
+    assert canonical["Postgres"] == "PostgreSQL"
+    assert canonical["made-up skill 119"] == "made-up skill 119"
+    assert len(canonical) == len(skills)

@@ -441,7 +441,7 @@ caller still propagates as `CancelledError` once the owner task has finished.
 
 `models.create_model_client(settings)` returns
 `OpenAIChatCompletionClient(model=settings.openai_model,
-api_key=settings.openai_api_key, temperature=0.2, timeout=60, max_retries=2,
+api_key=settings.openai_api_key, temperature=0.0, seed=42, timeout=60, max_retries=2,
 max_tokens=settings.max_output_tokens_per_call)`; the caller owns `close()`.
 
 ### Configuration and observability

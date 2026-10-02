@@ -2,8 +2,8 @@
 
 Owner-run before a release, never merge-blocking: ``pytest app/tests -m live -s``
 with ``OPENAI_API_KEY`` set runs one full analysis; ``RESUMEFIT_LIVE_RUNS=10`` also
-runs the timing/token statistics and the red-team set (roughly US$0.50). Without a
-key every live test is skipped. The red-team fixture itself is checked offline.
+runs the timing/token statistics, the red-team set, and the scoring evaluation
+(roughly US$1). Without a key every live test is skipped. The red-team fixture itself is checked offline.
 """
 
 import os
@@ -176,3 +176,58 @@ async def test_live_reports_do_not_follow_embedded_instructions(
         print(f"\n{marker}: score {run.outcome.report.overall_score}")
 
     assert followed == []
+
+
+SAMPLES = Path(__file__).parent / "fixtures" / "legitimate_samples"
+EVAL_ROLES = ("backend", "frontend", "data_scientist")
+RANKING_MARGIN = 15
+REPEAT_TOLERANCE = 10
+
+
+def sample(kind: str, role: str) -> str:
+    return (SAMPLES / f"{kind}_{role}.txt").read_text(encoding="utf-8")
+
+
+async def live_score(deps: PipelineDeps, resume: str, job: str, visitor: str) -> int:
+    run = await live_run(deps, resume, job, visitor)
+    assert isinstance(run.outcome, AnalysisSuccess), run.outcome
+    return run.outcome.report.overall_score
+
+
+@pytest.mark.live
+@needs_key
+@needs_full_set
+async def test_live_scores_rank_matching_pairs_above_mismatched_ones(
+    tools_url: str,  # noqa: F811
+) -> None:
+    """Evaluation set: each resume scores clearly higher against its own role."""
+    deps = live_deps(tools_url)
+    failures = []
+    for index, role in enumerate(EVAL_ROLES):
+        other = EVAL_ROLES[(index + 1) % len(EVAL_ROLES)]
+        resume = sample("resume", role)
+        matched = await live_score(deps, resume, sample("jd", role), f"eval-{role}")
+        mismatched = await live_score(
+            deps, resume, sample("jd", other), f"eval-{role}-{other}"
+        )
+        print(f"\n{role} resume: {matched} for {role}, {mismatched} for {other}")
+        if matched < mismatched + RANKING_MARGIN:
+            failures.append(role)
+
+    assert failures == []
+
+
+@pytest.mark.live
+@needs_key
+@needs_full_set
+async def test_live_repeated_analyses_of_the_same_inputs_score_alike(
+    tools_url: str,  # noqa: F811
+) -> None:
+    deps = live_deps(tools_url)
+    scores = [
+        await live_score(deps, RESUME_TEXT, JOB_DESCRIPTION, f"eval-repeat-{n}")
+        for n in range(3)
+    ]
+
+    print(f"\nrepeated scores: {scores}")
+    assert max(scores) - min(scores) <= REPEAT_TOLERANCE

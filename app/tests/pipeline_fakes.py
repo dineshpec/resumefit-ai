@@ -300,6 +300,7 @@ class InMemoryToolsGateway:
     extract_error: Exception | None = None
     pdf: bytes | None = b"%PDF-1.4 fake"
     pdf_error: Exception | None = None
+    normalize_error: Exception | None = None
     enter_error: Exception | None = None
     calls: list[str] = field(default_factory=list)
     entered: int = 0
@@ -335,6 +336,12 @@ class InMemoryToolsGateway:
         if self.pdf_error is not None:
             raise self.pdf_error
         return self.pdf
+
+    async def normalize_skills(self, skills: list[str]) -> dict[str, str]:
+        self.calls.append("normalize_skills")
+        if self.normalize_error is not None:
+            raise self.normalize_error
+        return {skill: skill.strip().title() for skill in skills}
 
     async def skill_tools(self) -> list[BaseTool[Any, Any]]:
         self.calls.append("skill_tools")

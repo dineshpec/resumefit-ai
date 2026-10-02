@@ -13,7 +13,7 @@ import logging
 import os
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -72,6 +72,7 @@ from resumefit.outcomes import (
 )
 from resumefit.report import (
     ReportValidationError,
+    SkillEvidence,
     finalize_report,
     render_markdown,
     report_json,
@@ -87,6 +88,7 @@ UNPARSEABLE_REPORT = (
 )
 
 OnEvent = Callable[[TimelineEntry], None]
+EvidenceFor = Callable[[ReportDraft], Awaitable[SkillEvidence]]
 
 
 def _utc_now() -> datetime:
@@ -258,8 +260,20 @@ async def _analyse(
         support_id=request.support_id,
         model=settings.openai_model,
     )
+
+    async def evidence_for(report_draft: ReportDraft) -> SkillEvidence:
+        return await _skill_evidence(tools, redacted_resume.text, report_draft)
+
     report = await _report(
-        draft, team_error, redactions, meta, client, settings, on_event, run
+        draft,
+        team_error,
+        redactions,
+        meta,
+        evidence_for,
+        client,
+        settings,
+        on_event,
+        run,
     )
     markdown = render_markdown(report)
 
@@ -395,6 +409,7 @@ async def _report(
     team_error: Exception | None,
     redactions: dict[str, int],
     meta: ReportMeta,
+    evidence_for: EvidenceFor,
     client: ChatCompletionClient,
     settings: Settings,
     on_event: OnEvent,
@@ -403,7 +418,7 @@ async def _report(
     """Finalise the team's draft, retrying the Report Writer once when it is unusable."""
     if draft is not None:
         try:
-            return finalize_report(draft, redactions, meta)
+            return finalize_report(draft, redactions, meta, await evidence_for(draft))
         except ReportValidationError as error:
             reasons = error.reasons
     elif team_error is not None and run.last_delegation == REPORT_WRITER:
@@ -435,9 +450,32 @@ async def _report(
         entry = to_entry(retried)
         if entry is not None:
             on_event(entry)
-        return finalize_report(retried.content, redactions, meta)
+        evidence = await evidence_for(retried.content)
+        return finalize_report(retried.content, redactions, meta, evidence)
     except Exception as error:
         raise _Failed(FailureCategory.REPORT_INVALID) from error
+
+
+async def _skill_evidence(
+    tools: ToolsGatewayProtocol, resume_text: str, draft: ReportDraft
+) -> SkillEvidence:
+    """The resume text plus canonical skill names; plain names if the tool fails."""
+    names = list(
+        dict.fromkeys(
+            [
+                *draft.job.must_have,
+                *draft.job.nice_to_have,
+                *draft.assessment.missing_must_have,
+                *draft.assessment.missing_nice_to_have,
+                *draft.candidate.skills,
+            ]
+        )
+    )
+    try:
+        canonical = await tools.normalize_skills(names)
+    except Exception:
+        canonical = {}
+    return SkillEvidence.from_names(resume_text, canonical)
 
 
 def _retry_task(outputs: dict[str, BaseModel], reasons: list[str]) -> str:

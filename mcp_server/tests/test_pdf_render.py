@@ -1,9 +1,17 @@
 import io
+import os
+from pathlib import Path
 
 import pytest
 from pypdf import PdfReader
 
-from resumefit_tools.pdf_render import MAX_MARKDOWN_CHARS, MarkdownTooLarge, render_pdf
+from resumefit_tools.pdf_render import (
+    MAX_MARKDOWN_CHARS,
+    FontFiles,
+    MarkdownTooLarge,
+    fonts_from_env,
+    render_pdf,
+)
 
 HEADINGS = [
     "Overall score",
@@ -97,3 +105,33 @@ def test_oversize_markdown_is_rejected_as_too_large() -> None:
 
     with pytest.raises(MarkdownTooLarge):
         render_pdf("a" * (MAX_MARKDOWN_CHARS + 1), "Report")
+
+
+UNICODE_FONTS = fonts_from_env(os.environ)
+needs_unicode_fonts = pytest.mark.skipif(
+    UNICODE_FONTS is None,
+    reason="no Unicode font: install fonts-dejavu-core or set PDF_FONT_REGULAR/BOLD",
+)
+
+
+def test_fonts_are_used_only_when_both_files_exist(tmp_path: Path) -> None:
+    regular, bold = tmp_path / "regular.ttf", tmp_path / "bold.ttf"
+    environ = {"PDF_FONT_REGULAR": str(regular), "PDF_FONT_BOLD": str(bold)}
+
+    regular.write_bytes(b"font")
+    assert fonts_from_env(environ) is None
+
+    bold.write_bytes(b"font")
+    assert fonts_from_env(environ) == FontFiles(regular, bold)
+
+
+@needs_unicode_fonts
+def test_a_unicode_font_keeps_non_latin_characters() -> None:
+    markdown = "# Отчёт — résumé\n\n- Ελληνικά and “quotes” for José Müller\n"
+
+    text = pdf_text(render_pdf(markdown, "Отчёт", UNICODE_FONTS))
+
+    assert "Отчёт — résumé" in text
+    assert "Ελληνικά" in text
+    assert "“quotes” for José Müller" in text
+    assert "?" not in text

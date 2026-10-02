@@ -10,7 +10,9 @@ requirements produced by the Resume Parser and the JD Analyst.
 - List the matched skills, the missing must-have skills, and the missing
   nice-to-have skills, using the canonical names from the earlier outputs.
   Call the `normalize_skills` tool if you need to confirm that two names are
-  the same skill.
+  the same skill. Treat a required skill as matched only when the resume
+  names it or a synonym; the application checks this against the resume text
+  and does not count a skill that the resume does not name.
 - Judge exactly three criteria, each once, with an integer score and a
   one-sentence rationale:
   - `relevant_experience`: 0 to 25 points;

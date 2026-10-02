@@ -7,6 +7,7 @@ from resumefit.outcomes import TimelineEntry
 from resumefit.report import (
     SECTION_HEADINGS,
     ReportValidationError,
+    SkillEvidence,
     finalize_report,
     render_markdown,
     report_json,
@@ -387,3 +388,79 @@ def test_timeline_summary_is_sanitised_and_capped_at_two_hundred_characters():
 
     assert entry.summary.startswith("Done x")
     assert len(entry.summary) == 200
+
+
+EVIDENCE_TEXT = (
+    "Backend engineer. Skills: Python, PostgreSQL and Docker; some Google Cloud."
+)
+
+
+def test_evidence_keeps_the_score_when_the_resume_names_every_matched_skill():
+    evidence = SkillEvidence(EVIDENCE_TEXT + " Streaming with Kafka.")
+
+    report = finalize_report(make_draft(), REDACTIONS, META, evidence)
+
+    assert rubric(report)["must_have_skills"].awarded == 30
+    assert report.assessment == make_draft().assessment
+
+
+def test_a_claimed_skill_the_resume_does_not_name_is_not_counted():
+    # The Matcher was talked into reporting no gaps at all.
+    draft = with_assessment(
+        matched_skills=["Python", "PostgreSQL", "Docker", "Kubernetes", "Go"],
+        missing_must_have=[],
+        missing_nice_to_have=[],
+    )
+
+    report = finalize_report(draft, REDACTIONS, META, SkillEvidence(EVIDENCE_TEXT))
+
+    lines = rubric(report)
+    assert lines["must_have_skills"].awarded == 30
+    assert "Kubernetes" in lines["must_have_skills"].rationale
+    # "Go" must not match inside "Google"; none of Go, Kafka, Terraform is named.
+    assert lines["nice_to_have_skills"].awarded == 0
+    assert report.assessment.matched_skills == ["Python", "PostgreSQL", "Docker"]
+    assert report.assessment.missing_must_have == ["Kubernetes"]
+    assert report.assessment.missing_nice_to_have == ["Go", "Kafka", "Terraform"]
+
+
+def test_a_skill_named_through_a_synonym_in_the_candidate_profile_counts():
+    draft = make_draft(
+        candidate=make_draft().candidate.model_copy(
+            update={"skills": ["Python", "Postgres", "Docker"]}
+        )
+    )
+    evidence = SkillEvidence.from_names(
+        "Python, Postgres and Docker.",
+        {"PostgreSQL": "PostgreSQL", "Postgres": "PostgreSQL"},
+    )
+
+    report = finalize_report(draft, REDACTIONS, META, evidence)
+
+    assert rubric(report)["must_have_skills"].awarded == 30
+
+
+def test_a_missing_skill_given_under_a_synonym_still_counts_as_missing():
+    draft = with_assessment(missing_must_have=["k8s"])
+    evidence = SkillEvidence.from_names(
+        EVIDENCE_TEXT + " Kubernetes.",
+        {"k8s": "Kubernetes", "Kubernetes": "Kubernetes"},
+    )
+
+    report = finalize_report(draft, REDACTIONS, META, evidence)
+
+    assert rubric(report)["must_have_skills"].awarded == 30
+
+
+def test_the_rationale_lists_at_most_five_uncounted_skills():
+    skills = [f"Skill{number}" for number in range(7)]
+    draft = make_draft(
+        job=make_draft().job.model_copy(update={"must_have": skills}),
+        assessment=make_draft().assessment.model_copy(update={"missing_must_have": []}),
+    )
+
+    report = finalize_report(draft, REDACTIONS, META, SkillEvidence("Nothing here."))
+
+    line = rubric(report)["must_have_skills"]
+    assert line.awarded == 0
+    assert line.rationale.endswith("Skill4, and 2 more.")
