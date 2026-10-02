@@ -22,7 +22,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from resumefit_tools.extraction import MAX_FILE_BYTES, error_result
-from resumefit_tools.pdf_render import MarkdownTooLarge
+from resumefit_tools.pdf_render import MarkdownTooLarge, fonts_from_env
 from resumefit_tools.pdf_render import render_pdf as render_markdown_pdf
 from resumefit_tools.taxonomy import NormalizedSkill
 from resumefit_tools.taxonomy import normalize_skills as normalize_skill_names
@@ -35,6 +35,7 @@ logger = logging.getLogger("resumefit_tools")
 
 mcp: FastMCP = FastMCP("resumefit-tools", mask_error_details=True)
 extraction_runner = runner_from_env(os.environ)
+pdf_fonts = fonts_from_env(os.environ)
 
 
 def _log_call(tool: str, started: float, result_code: str) -> None:
@@ -78,7 +79,7 @@ def render_pdf(markdown: str, title: str) -> dict[str, Any]:
     """Render report Markdown (max 100,000 characters) to a base64-encoded PDF."""
     started = time.monotonic()
     try:
-        pdf = render_markdown_pdf(markdown, title)
+        pdf = render_markdown_pdf(markdown, title, pdf_fonts)
     except MarkdownTooLarge:
         result = error_result("too_large")
     except Exception:
