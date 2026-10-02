@@ -20,6 +20,7 @@ from pypdf import PdfReader
 from starlette.testclient import TestClient
 
 from resumefit_tools import server
+from resumefit_tools.extraction import MAX_FILE_BYTES
 
 EXPECTED_ARGUMENTS = {
     "extract_resume_text": ["content_base64", "filename"],
@@ -105,7 +106,7 @@ async def test_extract_tool_rejects_content_that_is_not_base64() -> None:
 async def test_extract_tool_rejects_oversized_upload_before_parsing() -> None:
     result = await call(
         "extract_resume_text",
-        {"filename": "resume.txt", "content_base64": b64(b"a" * (2 * 1024 * 1024 + 1))},
+        {"filename": "resume.txt", "content_base64": b64(b"a" * (MAX_FILE_BYTES + 1))},
     )
 
     assert result == {"ok": False, "error_code": "too_large"}
@@ -336,3 +337,52 @@ async def test_server_process_serves_health_and_tools_over_streamable_http(
     assert normalized.structured_content == {
         "result": [{"input": "js", "canonical": "JavaScript", "category": "language"}]
     }
+
+
+def mcp_tool_call(arguments: dict[str, object]) -> dict[str, object]:
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "extract_resume_text", "arguments": arguments},
+    }
+
+
+MCP_HEADERS = {
+    "host": "mcp:8000",
+    "accept": "application/json, text/event-stream",
+    "content-type": "application/json",
+}
+
+
+def test_the_largest_resume_fits_through_the_mcp_http_endpoint(
+    http_client: TestClient,
+) -> None:
+    # Over the MCP SDK's default 4 MiB body cap once base64-encoded.
+    body = json.dumps(
+        mcp_tool_call(
+            {"filename": "resume.txt", "content_base64": b64(b"a" * MAX_FILE_BYTES)}
+        )
+    )
+    assert len(body) > 4 * 1024 * 1024
+
+    response = http_client.post("/mcp", headers=MCP_HEADERS, content=body)
+
+    assert response.status_code == 200
+    data = next(
+        line.removeprefix("data:")
+        for line in response.text.splitlines()
+        if line.startswith("data:")
+    )
+    [content] = json.loads(data)["result"]["content"]
+    assert json.loads(content["text"])["ok"] is True
+
+
+def test_a_body_beyond_the_resume_cap_is_refused_before_parsing(
+    http_client: TestClient,
+) -> None:
+    body = b"x" * (server.MAX_REQUEST_BODY_BYTES + 1)
+
+    response = http_client.post("/mcp", headers=MCP_HEADERS, content=body)
+
+    assert response.status_code == 413

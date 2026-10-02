@@ -240,7 +240,7 @@ applied.
   service's concurrent slots taken, or the visitor's quota or the global daily
   cap already used up: rejected before the file is parsed or moderated, with
   the reason and, for quota, the reset time.
-- 3a. Unsupported type, mismatched content, or file over 2 MB: rejected with a
+- 3a. Unsupported type, mismatched content, or file over 7 MB: rejected with a
   specific message.
 - 3b. Job description outside 200–10,000 characters: rejected with a specific
   message.
@@ -328,14 +328,14 @@ disk or logs. One structured log event records the outcome.
   executable with a `.pdf` extension).
 
 <!-- sarathi:requirement id="FR-UPLOAD-SIZE" -->
-- **Size cap.** The system shall reject a resume file larger than 2 MB.
+- **Size cap.** The system shall reject a resume file larger than 7 MB.
 
 <!-- sarathi:requirement id="FR-UPLOAD-PAGES" -->
 - **Page cap.** The system shall reject a PDF resume with more than 5 pages.
 
 <!-- sarathi:requirement id="FR-UPLOAD-ARCHIVE" -->
 - **DOCX archive limits.** The system shall reject a DOCX resume whose archive
-  has more than 500 entries, more than 20 MB of total uncompressed content, an
+  has more than 500 entries, more than 50 MB of total uncompressed content, an
   encrypted entry, or an entry that is itself an archive.
 
 <!-- sarathi:requirement id="FR-UPLOAD-PARSETIME" -->
@@ -718,7 +718,7 @@ links to it rather than restating retention periods.
 
 <!-- sarathi:acceptance id="AT-UPLOAD-SIZE" use-case="UC-ANALYSIS-RUN" verifies="FR-UPLOAD-SIZE" -->
 - **Oversized file refused.** Given a 2.1 MB PDF, when it is analysed, then the
-  visitor sees the 2 MB limit message.
+  visitor sees the 7 MB limit message.
 
 <!-- sarathi:acceptance id="AT-UPLOAD-PAGES" use-case="UC-ANALYSIS-RUN" verifies="FR-UPLOAD-PAGES" -->
 - **Long PDF refused.** Given a 6-page PDF, when it is analysed, then the visitor
@@ -726,7 +726,7 @@ links to it rather than restating retention periods.
 
 <!-- sarathi:acceptance id="AT-UPLOAD-ARCHIVE" use-case="UC-ANALYSIS-RUN" verifies="FR-UPLOAD-ARCHIVE" -->
 - **Hostile DOCX refused.** Given DOCX files with 501 entries, with parts
-  expanding beyond 20 MB, with an encrypted entry, and with an embedded ZIP
+  expanding beyond 50 MB, with an encrypted entry, and with an embedded ZIP
   entry, when each is analysed, then each is refused with an unreadable-file
   message and no model call is made; a normal DOCX with a table is accepted.
 

@@ -16,13 +16,16 @@ from pypdf import PdfReader
 
 FileType = Literal["pdf", "docx", "txt"]
 
-MAX_FILE_BYTES = 2 * 1024 * 1024
+MAX_FILE_BYTES = 7 * 1024 * 1024
 MAX_PDF_PAGES = 5
 MAX_DOCX_ENTRIES = 500
-MAX_DOCX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024
+MAX_DOCX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 MAX_TEXT_CHARS = 50_000
 
 PDF_SIGNATURE = b"%PDF-"
+# The PDF header may follow a few bytes of other data (ISO 32000-1, 7.5.2);
+# readers look for it in the first 1024 bytes.
+PDF_HEADER_WINDOW = 1024
 ZIP_SIGNATURE = b"PK\x03\x04"
 WORD_DOCUMENT_PART = "word/document.xml"
 ZIP_ENCRYPTED_FLAG = 0x01
@@ -68,7 +71,7 @@ def _checked_type(filename: str, data: bytes) -> FileType:
     if len(data) > MAX_FILE_BYTES:
         raise ExtractionError("too_large")
     claimed = EXTENSION_TYPES.get(PurePath(filename).suffix.lower())
-    if data.startswith(PDF_SIGNATURE):
+    if PDF_SIGNATURE in data[:PDF_HEADER_WINDOW]:
         detected: FileType | None = "pdf"
     elif data.startswith(ZIP_SIGNATURE):
         detected = "docx"

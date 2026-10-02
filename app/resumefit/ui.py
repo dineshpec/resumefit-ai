@@ -58,11 +58,11 @@ PDF_UNAVAILABLE_NOTE = (
     "PDF is unavailable for this report. The on-screen report and the JSON and "
     "Markdown downloads are complete."
 )
-RESUME_LABEL = "Resume (PDF, DOCX, or TXT; at most 2 MB)"
+RESUME_LABEL = "Resume (PDF, DOCX, or TXT; at most 7 MB)"
 JOB_DESCRIPTION_LABEL = "Job description (200–10,000 characters)"
 JOB_DESCRIPTION_MAX_CHARS = 10_000
 RESUME_TYPES = ["pdf", "docx", "txt"]
-MAX_UPLOAD_MB = 2
+MAX_UPLOAD_MB = 7
 RUNNING_LABEL = "Analysis running…"
 COMPLETED_LABEL = "Analysis completed"
 FAILED_LABEL = "Analysis failed"

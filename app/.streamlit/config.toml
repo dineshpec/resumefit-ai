@@ -8,7 +8,7 @@ port = 8501
 address = "0.0.0.0"
 enableXsrfProtection = true
 enableCORS = true
-maxUploadSize = 2
+maxUploadSize = 7
 fileWatcherType = "none"
 runOnSave = false
 

@@ -51,7 +51,7 @@ FAILURE_LABELS: dict[FailureCategory, str] = {
 _MESSAGES: dict[FailureCategory, str] = {
     FailureCategory.INVALID_FILE: (
         "We could not accept this file. Please upload a PDF, DOCX, or plain-text resume "
-        "of at most 2 MB."
+        "of at most 7 MB."
     ),
     FailureCategory.INVALID_JOB_DESCRIPTION: "Paste a job description of 200–10,000 characters.",
     FailureCategory.SUSPICIOUS_INPUT: (
@@ -87,7 +87,7 @@ _REASON_MESSAGES: dict[FailureCategory, dict[str, str]] = {
             "The file content does not match its extension. "
             "Please upload a genuine PDF, DOCX, or text file."
         ),
-        "too_large": "Resume files can be at most 2 MB.",
+        "too_large": "Resume files can be at most 7 MB.",
         "bad_encoding": "Text files must be UTF-8 encoded.",
         "too_many_pages": "PDFs can have at most 5 pages.",
         "archive_too_large": "This DOCX file is too large or complex to process.",

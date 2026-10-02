@@ -18,6 +18,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp.server import http as fastmcp_http
+from mcp.server.transport_security import RequestBodyLimitMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -30,6 +32,29 @@ from resumefit_tools.worker import runner_from_env
 
 DEFAULT_ALLOWED_HOSTS = "mcp:8000,localhost:8000,127.0.0.1:8000"
 MAX_BASE64_CHARS = 4 * -(-MAX_FILE_BYTES // 3)
+# The largest resume, base64-encoded, plus room for the JSON-RPC envelope.
+MAX_REQUEST_BODY_BYTES = MAX_BASE64_CHARS + 1024 * 1024
+
+
+class ResumeSizedSessionManager(fastmcp_http.FastMCPStreamableHTTPSessionManager):
+    """FastMCP's session manager with a request-body cap that fits the largest resume.
+
+    The MCP SDK rejects request bodies over 4 MiB (HTTP 413) unless its session
+    manager gets ``max_request_body_size``, which FastMCP 4.0 does not pass on. A
+    7 MB file is about 9.4 MB once base64-encoded, so the limit is replaced here.
+    ``test_server`` sends a body over 4 MiB, so a library upgrade that breaks this
+    fails the tests.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.max_request_body_size = MAX_REQUEST_BODY_BYTES
+        self.asgi_app = RequestBodyLimitMiddleware(
+            self._handle_request, MAX_REQUEST_BODY_BYTES
+        )
+
+
+fastmcp_http.FastMCPStreamableHTTPSessionManager = ResumeSizedSessionManager  # type: ignore[misc]
 
 logger = logging.getLogger("resumefit_tools")
 
@@ -50,7 +75,7 @@ def _result_code(result: Mapping[str, Any]) -> str:
 
 @mcp.tool
 async def extract_resume_text(filename: str, content_base64: str) -> dict[str, Any]:
-    """Extract text from a base64-encoded PDF, DOCX, or UTF-8 text resume (max 2 MB)."""
+    """Extract text from a base64-encoded PDF, DOCX, or UTF-8 text resume (max 7 MB)."""
     started = time.monotonic()
     if len(content_base64) > MAX_BASE64_CHARS:
         result = error_result("too_large")

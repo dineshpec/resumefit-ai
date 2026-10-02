@@ -9,9 +9,10 @@
 {$DOMAIN} {
 	encode zstd gzip
 
-	# Uploads are capped at 2 MB by the app; anything far larger stops here.
+	# Uploads are capped at 7 MB by the app (plus multipart overhead);
+	# anything far larger stops here.
 	request_body {
-		max_size 5MB
+		max_size 10MB
 	}
 
 	# Deleting a header makes Caddy apply the whole block as the response is

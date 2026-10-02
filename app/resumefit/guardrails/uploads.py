@@ -7,7 +7,10 @@ from typing import Literal
 
 FileType = Literal["pdf", "docx", "txt"]
 
-MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+MAX_UPLOAD_BYTES = 7 * 1024 * 1024
+# The PDF header may follow a few bytes of other data (ISO 32000-1, 7.5.2);
+# readers look for it in the first 1024 bytes.
+PDF_HEADER_WINDOW = 1024
 
 _EXTENSIONS: dict[str, FileType] = {".pdf": "pdf", ".docx": "docx", ".txt": "txt"}
 _PDF_SIGNATURE = b"%PDF-"
@@ -44,16 +47,20 @@ def validate_upload(filename: str, data: bytes) -> UploadCheck:
 
 def _signature_problem(file_type: FileType, data: bytes) -> UploadProblem | None:
     if file_type == "pdf":
-        return None if data.startswith(_PDF_SIGNATURE) else UploadProblem.MISMATCH
+        return None if is_pdf(data) else UploadProblem.MISMATCH
     if file_type == "docx":
         return None if data.startswith(_ZIP_SIGNATURE) else UploadProblem.MISMATCH
-    if data.startswith((_PDF_SIGNATURE, _ZIP_SIGNATURE)) or b"\x00" in data:
+    if is_pdf(data) or data.startswith(_ZIP_SIGNATURE) or b"\x00" in data:
         return UploadProblem.MISMATCH
     try:
         data.removeprefix(_UTF8_BOM).decode("utf-8")
     except UnicodeDecodeError:
         return UploadProblem.BAD_ENCODING
     return None
+
+
+def is_pdf(data: bytes) -> bool:
+    return _PDF_SIGNATURE in data[:PDF_HEADER_WINDOW]
 
 
 def _rejected(problem: UploadProblem) -> UploadCheck:
