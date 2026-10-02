@@ -252,3 +252,19 @@ async def test_gateway_maps_skills_to_canonical_names_in_batches(
     assert canonical["Postgres"] == "PostgreSQL"
     assert canonical["made-up skill 119"] == "made-up skill 119"
     assert len(canonical) == len(skills)
+
+
+async def test_agent_tools_pass_openais_strict_check_for_structured_output(
+    tools_url: str,
+) -> None:
+    """Regression: agents with tools and an output type use OpenAI's ``parse``,
+    which raises ``ValueError`` for any tool not marked strict, before any request."""
+    from autogen_ext.models.openai._openai_client import convert_tools
+    from openai.lib._parsing._completions import validate_input_tools
+
+    async with ToolsGateway(tools_url) as tools:
+        agent_tools = await tools.skill_tools()
+
+    [param] = validate_input_tools(convert_tools(agent_tools))
+    assert param["function"]["strict"] is True
+    assert param["function"]["parameters"]["required"] == ["skills"]
