@@ -190,7 +190,12 @@ async def test_successful_analysis_returns_scored_report_with_all_formats(
     )
     assert harness.remaining() == 4
     assert harness.lease_is_free()
-    assert harness.gateway.calls == ["extract_resume_text", "skill_tools", "render_pdf"]
+    assert harness.gateway.calls == [
+        "extract_resume_text",
+        "skill_tools",
+        "normalize_skills",
+        "render_pdf",
+    ]
     [event] = finished_events(log_stream)
     assert event["outcome"] == "success"
     assert event["pdf_ok"] is True
@@ -739,3 +744,44 @@ async def test_dependencies_built_from_settings_use_the_configured_limits_and_ur
     assert deps.limiter.remaining("anyone", FIXED_NOW) == 2
     assert isinstance(deps.tools_factory(), ToolsGateway)
     assert config["max_tokens"] == 4000
+
+
+def inflated_draft() -> ReportDraft:
+    """A Matcher talked into reporting no gaps, though the resume never names Terraform."""
+    draft = report_draft()
+    return draft.model_copy(
+        update={
+            "assessment": draft.assessment.model_copy(
+                update={
+                    "matched_skills": ["Python", "PostgreSQL", "Terraform", "gRPC"],
+                    "missing_must_have": [],
+                }
+            )
+        }
+    )
+
+
+async def test_a_claimed_skill_the_resume_does_not_name_does_not_raise_the_score() -> (
+    None
+):
+    harness = Harness(scripts=[team_script(inflated_draft().model_dump_json())])
+
+    outcome = await harness.run()
+
+    assert isinstance(outcome, AnalysisSuccess)
+    # Same as the honest draft: 2 of 3 must-haves (27), 1 of 2 nice-to-haves (8).
+    assert outcome.report.overall_score == 27 + 20 + 8 + 12 + 4
+    assert outcome.report.assessment.missing_must_have == ["Terraform"]
+    assert "Terraform" not in outcome.report.assessment.matched_skills
+
+
+async def test_coverage_is_still_checked_when_normalize_skills_fails() -> None:
+    harness = Harness(
+        scripts=[team_script(inflated_draft().model_dump_json())],
+        gateway=InMemoryToolsGateway(normalize_error=ToolsUnavailable("down")),
+    )
+
+    outcome = await harness.run()
+
+    assert isinstance(outcome, AnalysisSuccess)
+    assert outcome.report.overall_score == 27 + 20 + 8 + 12 + 4

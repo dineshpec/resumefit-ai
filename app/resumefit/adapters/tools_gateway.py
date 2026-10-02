@@ -1,8 +1,9 @@
 """MCP tools gateway: the application's only client of the tools service.
 
 The pipeline calls ``extract_resume_text`` and ``render_pdf`` itself, so raw
-resume text and binary content never pass through a model. Agents receive only
-the ``normalize_skills`` adapter, bound to this gateway's own session.
+resume text and binary content never pass through a model, and it calls
+``normalize_skills`` to check the coverage score. Agents receive only the
+``normalize_skills`` adapter, bound to this gateway's own session.
 """
 
 import asyncio
@@ -24,6 +25,7 @@ from mcp import ClientSession
 
 AGENT_TOOL_NAMES = frozenset({"normalize_skills"})
 DEFAULT_TIMEOUT_S = 30.0
+NORMALIZE_BATCH = 100  # the tool's own per-call limit
 
 
 class ToolsUnavailable(Exception):
@@ -57,6 +59,8 @@ class ToolsGatewayProtocol(Protocol):
     ) -> ExtractResult: ...
 
     async def render_pdf(self, markdown: str, title: str) -> bytes | None: ...
+
+    async def normalize_skills(self, skills: list[str]) -> dict[str, str]: ...
 
     async def skill_tools(self) -> list[BaseTool[Any, Any]]: ...
 
@@ -162,6 +166,24 @@ class ToolsGateway:
         except (KeyError, ValueError):
             return None
 
+    async def normalize_skills(self, skills: list[str]) -> dict[str, str]:
+        """Map each skill name to its canonical name, keyed by the input as sent."""
+        canonical: dict[str, str] = {}
+        for start in range(0, len(skills), NORMALIZE_BATCH):
+            payload = await self._call_json(
+                "normalize_skills", {"skills": skills[start : start + NORMALIZE_BATCH]}
+            )
+            if isinstance(payload, dict):
+                payload = payload.get("result")
+            if not isinstance(payload, list):
+                raise ToolsUnavailable("normalize_skills returned an unexpected shape")
+            for item in payload:
+                if isinstance(item, dict):
+                    name, value = item.get("input"), item.get("canonical")
+                    if isinstance(name, str) and isinstance(value, str):
+                        canonical[name] = value
+        return canonical
+
     async def skill_tools(self) -> list[BaseTool[Any, Any]]:
         if self._session is None:
             raise ToolsUnavailable("tools gateway is not open")
@@ -172,6 +194,12 @@ class ToolsGateway:
         return [tool for tool in tools if tool.name in AGENT_TOOL_NAMES]
 
     async def _call(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        payload = await self._call_json(name, arguments)
+        if not isinstance(payload, dict):
+            raise ToolsUnavailable(f"{name} returned an unexpected shape")
+        return payload
+
+    async def _call_json(self, name: str, arguments: dict[str, Any]) -> Any:
         if self._workbench is None:
             raise ToolsUnavailable("tools gateway is not open")
         try:
@@ -184,8 +212,6 @@ class ToolsGateway:
             payload = json.loads(result.to_text())
         except ValueError as error:
             raise ToolsUnavailable(f"{name} returned malformed content") from error
-        if not isinstance(payload, dict):
-            raise ToolsUnavailable(f"{name} returned an unexpected shape")
         return payload
 
 
