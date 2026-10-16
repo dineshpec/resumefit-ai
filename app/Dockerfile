@@ -1,13 +1,13 @@
 # Application image: the Streamlit page with the in-process AutoGen team.
 # Build context: ./app (see app/.dockerignore).
 
-FROM python:3.11-slim AS build
+FROM python:3.14-slim AS build
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN python -m venv /opt/venv
 COPY requirements.txt /tmp/requirements.txt
 RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 # HOME points at the tmpfs so Streamlit can write its runtime files while the
 # root filesystem stays read-only.
 ENV PATH="/opt/venv/bin:$PATH" \
