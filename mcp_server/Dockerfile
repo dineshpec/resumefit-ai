@@ -1,13 +1,13 @@
 # Tools-service image: the FastMCP server (text extraction, skill
 # normalisation, PDF rendering). Build context: ./mcp_server.
 
-FROM python:3.11-slim AS build
+FROM python:3.14-slim AS build
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN python -m venv /opt/venv
 COPY requirements.txt /tmp/requirements.txt
 RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
